@@ -503,6 +503,18 @@
     updateToolbarState();
   }
 
+  function isBulkEditRefreshBlocked() {
+    return isFeatureEnabled('bulkEdit') &&
+      gGanttGlobal.ganttConfig &&
+      gGanttGlobal.ganttConfig.bulkEditEnabled;
+  }
+
+  function validateRefreshAllowed() {
+    if (!isBulkEditRefreshBlocked()) return true;
+    EAM.Messaging.showConfirmation('Bulk Edit is currently ON. Turn off Bulk Edit before refreshing the Gantt.');
+    return false;
+  }
+
   function makeBulkComboStore(store, includeBlank) {
     var data = includeBlank ? [{ code: "", description: "No Change" }] : [];
     var seen = { "": true };
@@ -1847,7 +1859,7 @@ gantt.config.timeline = true;           // enable timeline mode
       vHTML += row(true,  "Status:",       (task.EVT_STATUS_DESC || task.EVT_STATUS) || "-",               "Type:",         task.EVT_JOBTYPE || "-");
       vHTML += row(true,  "Due Date:",     formatDueDate(task.EVT_DUE),             "PM Code:",      task.EVT_PPM || "-");
       vHTML += row(true,  "Est. Hours:",   task.ACT_EST       || "-",               "Trades:",       task.LISTOFTRADES || "-");
-      vHTML += row(true,  "Shutdown Code: ", task.PRJ_SHUTDOWN || "-",               "No. of People:", task.ACT_PERSONS || "-");
+      vHTML += row(true,  "Shutdown Code: ", task.PRJ_SHUTDOWN || " -",               "No. of People:", task.ACT_PERSONS || "-");
       vHTML += "</table></div>";
 
       return vHTML;
@@ -2979,6 +2991,19 @@ gantt.config.timeline = true;           // enable timeline mode
     return ("0" + vDay.toString()).slice(-2) + '-' + ("0" + vMonth.toString()).slice(-2) + '-' + vYear;
   }
 
+  function getCalendarDayDiff(fromDate, toDate) {
+    var from = new Date(fromDate);
+    var to = new Date(toDate);
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) return 0;
+    var fromUtc = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate());
+    var toUtc = Date.UTC(to.getFullYear(), to.getMonth(), to.getDate());
+    return Math.round((toUtc - fromUtc) / (1000 * 60 * 60 * 24));
+  }
+
+  function getInclusiveCalendarDayCount(startDate, endDate) {
+    return Math.max(1, getCalendarDayDiff(startDate, endDate) + 1);
+  }
+
   function formatDateForGantt(vDate) {
     return vDate.toLocaleDateString('en-GB', {
       year: 'numeric',
@@ -4104,10 +4129,12 @@ gantt.config.timeline = true;           // enable timeline mode
       var newStart = change.newStart ? formatDateDMY(change.newStart) : '-';
       var adjustedEnd = change.newEnd ? new Date(change.newEnd.getTime() - 1) : null;
       var newEnd = adjustedEnd ? formatDateDMY(adjustedEnd) : '-';
-      var oldDays = (change.oldStart && change.oldEnd) ? Math.max(1, Math.round((change.oldEnd - change.oldStart) / (1000 * 60 * 60 * 24)) + 1) : '-';
-      var newDays = (change.newStart && adjustedEnd) ? Math.max(1, Math.round((adjustedEnd - change.newStart) / (1000 * 60 * 60 * 24)) + 1) : '-';
-      var delta = (oldDays !== '-' && newDays !== '-') ? (newDays - oldDays) : 0;
-      var deltaText = delta === 0 ? 'No duration change' : ((delta > 0 ? '+' : '') + delta + ' day(s)');
+      var oldDays = (change.oldStart && change.oldEnd) ? getInclusiveCalendarDayCount(change.oldStart, change.oldEnd) : '-';
+      var newDays = (change.newStart && adjustedEnd) ? getInclusiveCalendarDayCount(change.newStart, adjustedEnd) : '-';
+      var moveDays = (change.oldStart && change.newStart) ? getCalendarDayDiff(change.oldStart, change.newStart) : 0;
+      var durationDelta = (oldDays !== '-' && newDays !== '-') ? (newDays - oldDays) : 0;
+      var moveText = moveDays === 0 ? 'No date movement' : ('Moved ' + (moveDays > 0 ? '+' : '') + moveDays + ' day(s)');
+      var durationText = durationDelta === 0 ? '' : ', Duration ' + (durationDelta > 0 ? '+' : '') + durationDelta + ' day(s)';
       rows +=
         '<tr id="review-row-' + id + '">' +
           '<td>' +
@@ -4120,7 +4147,7 @@ gantt.config.timeline = true;           // enable timeline mode
             '<div class="gantt-review-meta">Status: ' + safeHtml(task && (task.EVT_STATUS_DESC || task.EVT_STATUS)) + '</div>' +
           '</td>' +
           '<td><div class="gantt-review-date gantt-review-old">' + safeHtml(oldStart) + ' &rarr; ' + safeHtml(oldEnd) + '</div><div class="gantt-review-meta">' + safeHtml(oldDays) + ' day(s)</div></td>' +
-          '<td><div class="gantt-review-date gantt-review-new">' + safeHtml(newStart) + ' &rarr; ' + safeHtml(newEnd) + '</div><div class="gantt-review-meta">' + safeHtml(newDays) + ' day(s), ' + safeHtml(deltaText) + '</div></td>' +
+          '<td><div class="gantt-review-date gantt-review-new">' + safeHtml(newStart) + ' &rarr; ' + safeHtml(newEnd) + '</div><div class="gantt-review-meta">' + safeHtml(newDays) + ' day(s), ' + safeHtml(moveText + durationText) + '</div></td>' +
           '<td id="review-status-' + id + '" style="text-align:center;font-size:15px;min-width:90px;"></td>' +
           '<td style="text-align:center;">' +
             '<button data-revert-id="' + id + '" id="review-revert-' + id + '" ' +
