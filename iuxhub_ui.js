@@ -1847,7 +1847,7 @@ gantt.config.timeline = true;           // enable timeline mode
       vHTML += row(true,  "Status:",       (task.EVT_STATUS_DESC || task.EVT_STATUS) || "-",               "Type:",         task.EVT_JOBTYPE || "-");
       vHTML += row(true,  "Due Date:",     formatDueDate(task.EVT_DUE),             "PM Code:",      task.EVT_PPM || "-");
       vHTML += row(true,  "Est. Hours:",   task.ACT_EST       || "-",               "Trades:",       task.LISTOFTRADES || "-");
-      vHTML += row(true,  "Shutdown Code:", task.PRJ_SHUTDOWN || "-",               "No. of People:", task.ACT_PERSONS || "-");
+      vHTML += row(true,  "Shutdown Code: ", task.PRJ_SHUTDOWN || "-",               "No. of People:", task.ACT_PERSONS || "-");
       vHTML += "</table></div>";
 
       return vHTML;
