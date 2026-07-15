@@ -975,6 +975,16 @@
     return task._iuxCustomerDateKey;
   }
 
+  function getTaskDueDateKey(task) {
+    if (!task || Ext.isEmpty(task.EVT_DUE)) return '';
+    var sourceValue = task.EVT_DUE;
+    if (task._iuxDueDateSource === sourceValue) return task._iuxDueDateKey || '';
+    var dueDate = parseGanttDateValue(sourceValue);
+    task._iuxDueDateSource = sourceValue;
+    task._iuxDueDateKey = dueDate && !isNaN(dueDate.getTime()) ? getDateKey(dueDate) : '';
+    return task._iuxDueDateKey;
+  }
+
   function getGanttAlternateRowClass(task) {
     if (!getConfiguredExperience().alternateGanttRows || !task) return '';
     var index = -1;
@@ -1064,6 +1074,18 @@
       }
     }
     return new Date(value);
+  }
+
+  function getDateKey(value) {
+    var date = parseGanttDateValue(value);
+    if (!date || isNaN(date.getTime())) return '';
+    var month = date.getMonth() + 1;
+    var day = date.getDate();
+    return date.getFullYear() + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;
+  }
+
+  function getFastDateKey(value) {
+    return getDateKey(value);
   }
 
   function getTaskScheduledEndDate(task) {
@@ -1712,7 +1734,9 @@
     gantt.config.scale_height = 70;
     gantt.config.min_duration = 24 * 60 * 60 * 1000;
     gantt.config.smart_rendering = !isFeatureEnabled('resourcesPanel');
-    gantt.config.static_background = true;
+    // Due-date markers and calendar highlights require real timeline cells.
+    // static_background skips those cells, so timeline_cell_class cannot render.
+    gantt.config.static_background = false;
     //gantt.config.show_task_cells = false;
     gantt.config.undo = true;
     gantt.config.redo = true;
@@ -1868,14 +1892,17 @@ gantt.config.timeline = true;           // enable timeline mode
     // Weekend / holiday cell highlighting — checks gGanttGlobal.ganttConfig flags on every render
     gantt.templates.timeline_cell_class = function(task, date) {
       if (!gantt.ext || !gantt.ext.zoom) return '';
-      var level = gantt.ext.zoom.getCurrentLevel();
-      if (level !== 0 && level !== 1) return '';
+      var levelName = getCurrentZoomLevelName();
+      if (levelName !== 'day' && levelName !== 'week') return '';
 
-      var baseClass = getTimelineBaseCellClass(date, level);
+      var baseClass = getTimelineBaseCellClass(date, levelName);
       var rowClass = getGanttAlternateRowClass(task);
       if (rowClass) baseClass = baseClass ? baseClass + ' ' + rowClass : rowClass;
       if (gGanttGlobal.ganttConfig.highlightDueDates && task && getTaskCustomerSpecificDateKey(task) === getDateKey(date)) {
-        return baseClass ? baseClass + ' highlight-cell' : 'highlight-cell';
+        baseClass = baseClass ? baseClass + ' highlight-cell' : 'highlight-cell';
+      }
+      if (levelName === 'day' && gGanttGlobal.ganttConfig.highlightDueDateFlags && task && getTaskDueDateKey(task) === getDateKey(date)) {
+        baseClass = baseClass ? baseClass + ' gantt-due-date-cell' : 'gantt-due-date-cell';
       }
       return baseClass;
     };
@@ -1883,7 +1910,7 @@ gantt.config.timeline = true;           // enable timeline mode
 
     gantt.templates.scale_cell_class = function(date) {
       // Highlighting only applies on the Day scale; all other scales are unaffected
-      if (!gantt.ext || !gantt.ext.zoom || gantt.ext.zoom.getCurrentLevel() !== 0) return '';
+      if (!gantt.ext || !gantt.ext.zoom || getCurrentZoomLevelName() !== 'day') return '';
       var cls = [];
       if (gGanttGlobal.ganttConfig.highlightWeekends && (date.getDay() === 0 || date.getDay() === 6)) {
         cls.push('gantt-weekend-scale');
@@ -1898,11 +1925,7 @@ gantt.config.timeline = true;           // enable timeline mode
     gantt.templates.scale_row_class = function(scale) { return ''; };
 
     gantt.templates.task_text = function(start, end, task) {
-      var text = safeHtml(getConfiguredTaskText(task));
-      if (gGanttGlobal.ganttConfig.highlightDueDateFlags && task.EVT_DUE) {
-        text += '<span class="gantt-due-date-flag" title="Due Date: ' + task.EVT_DUE + '"><i class="fa fa-flag"></i></span>';
-      }
-      return text;
+      return safeHtml(getConfiguredTaskText(task));
     };
 
     gantt.attachEvent("onBeforeTaskDisplay", function (id, task) {
@@ -1965,7 +1988,8 @@ gantt.config.timeline = true;           // enable timeline mode
       obj.EVT_TARGET = formatDateForGantt(vStartDate);
       obj.EVT_SCHEDEND = formatDateForGantt(vEndDate);
       if (!Ext.isEmpty(obj.EVT_DUE)) {
-        obj.EVT_DUE = formatDateForGantt(new Date(obj.EVT_DUE));
+        var parsedDueDate = parseGanttDateValue(obj.EVT_DUE);
+        if (!isNaN(parsedDueDate.getTime())) obj.EVT_DUE = formatDateForGantt(parsedDueDate);
       }
       if (!Ext.isEmpty(obj.EVT_UDFDATE01)) {
         obj.EVT_UDFDATE01 = formatDateForGantt(new Date(obj.EVT_UDFDATE01));
@@ -3780,14 +3804,14 @@ gantt.config.timeline = true;           // enable timeline mode
         row('fa-save', '#28a745', 'Save Changes', 'Opens the pending changes review popup before committing schedule changes.', 'The review popup shows old dates, new dates, duration change, status, and per-row revert action.') +
         // Temporarily hidden from the legend; retain for future Summary use.
         // row('fa-chart-pie', '#0d6efd', 'Summary', 'Opens work order summary cards and quick filters.', 'Summary filters can be removed from the toolbar indicator. Show All WOs clears summary and column/search filters.') +
-        row('fa-cog', '#495057', 'Configuration', 'Opens display highlighters and configuration controls.', 'This includes timeline highlights, due-date flags, shutdown highlighting, and ' + configScope + ' management.') +
+        row('fa-cog', '#495057', 'Configuration', 'Opens display highlighters and configuration controls.', 'This includes timeline highlights, due-date markers, shutdown highlighting, and ' + configScope + ' management.') +
       '</ul>' +
 
       '<h3 style="' + sectionStyle + '">Timeline Highlights</h3>' +
       '<ul style="' + listStyle + '">' +
         '<li style="margin-bottom:9px;">' + swatch('background:rgba(220,53,69,0.09);border:1px solid #f8d7da;') + '<b>Weekend Columns:</b> Saturday and Sunday columns are shaded when enabled.' + cfgState(gGanttGlobal.ganttConfig.highlightWeekends, gGanttGlobal.ganttConfig.highlightWeekends ? 'On' : 'Off') + '<div style="' + noteStyle + '">Useful for quickly seeing non-working calendar periods across the entire timeline.</div></li>' +
         '<li style="margin-bottom:9px;">' + swatch('background:rgba(220,53,69,0.18);border:1px solid #dc3545;') + '<b>Customer Specific Date Cells:</b> Customer specific date cells are highlighted for each work order when enabled.' + cfgState(gGanttGlobal.ganttConfig.highlightDueDates, gGanttGlobal.ganttConfig.highlightDueDates ? 'On' : 'Off') + '<div style="' + noteStyle + '">The customer specific date comes from ' + safeHtml(getConfiguredExperience().timelineHighlightField) + '.</div></li>' +
-        '<li style="margin-bottom:9px;"><span style="display:inline-block;width:28px;color:#dc3545;text-align:center;margin-right:8px;"><i class="fa fa-flag"></i></span><b>Due Date Flag:</b> Adds a small red flag on task bars for work orders with a due date.' + cfgState(gGanttGlobal.ganttConfig.highlightDueDateFlags, gGanttGlobal.ganttConfig.highlightDueDateFlags ? 'On' : 'Off') + '<div style="' + noteStyle + '">The flag tooltip shows the work order due date without changing the task duration.</div></li>' +
+        '<li style="margin-bottom:9px;"><span style="display:inline-block;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid #dc3545;margin:0 14px 0 7px;"></span><b>Due Date Marker:</b> Adds an inverted red triangle on the work order row at its due date.' + cfgState(gGanttGlobal.ganttConfig.highlightDueDateFlags, gGanttGlobal.ganttConfig.highlightDueDateFlags ? 'On' : 'Off') + '<div style="' + noteStyle + '">The marker is centered on the specific due-date cell and its tooltip shows the date.</div></li>' +
         '<li style="margin-bottom:9px;">' + swatch('background:rgba(111,66,193,0.16);border:1px solid #d6c7ef;') + '<b>Shutdown Dates:</b> Shutdown columns are shaded when a work order has PRJ_SHUTDOWN populated.' + cfgState(gGanttGlobal.ganttConfig.highlightShutdownDates, gGanttGlobal.ganttConfig.highlightShutdownDates ? 'On' : 'Off') + '<div style="' + noteStyle + '">The highlighted range spans from EVT_TARGET through EVT_SCHEDEND. Multi-day shutdown work orders highlight every date in the range.</div></li>' +
         '<li style="margin-bottom:9px;">' + swatch('background:rgba(255,193,7,0.18);border:1px solid #ffe082;') + '<b>National Holidays:</b> US federal holidays are shaded when enabled.' + cfgState(gGanttGlobal.ganttConfig.highlightNationalHolidays, gGanttGlobal.ganttConfig.highlightNationalHolidays ? 'On' : 'Off') + '<div style="' + noteStyle + '">The holiday cache is rebuilt when the option is toggled.</div></li>' +
         '<li style="margin-bottom:9px;">' + swatch('background:rgba(13,110,253,0.12);border:1px solid #93c5fd;') + '<b>Organization Holidays:</b> Configured organization holiday dates are shaded when enabled.' + cfgState(gGanttGlobal.ganttConfig.highlightOrgHolidays, gGanttGlobal.ganttConfig.highlightOrgHolidays ? 'On' : 'Off') + '<div style="' + noteStyle + '">Admins maintain Organization Holidays and Organization Special Days in Layout Configuration.</div></li>' +
@@ -3833,7 +3857,7 @@ gantt.config.timeline = true;           // enable timeline mode
         '<li style="margin-bottom:9px;"><span style="background:#28a745;color:white;padding:4px 12px;border-radius:12px;font-weight:bold;">Green Badge</span> <b>Total WOs:</b> Number of work orders currently visible after filters.</li>' +
         // Temporarily hidden from the legend; retain for future Filter Badge use.
         // '<li style="margin-bottom:9px;"><span style="background:#fff3cd;color:#7a4f01;border:1px solid #ffc107;padding:4px 12px;border-radius:12px;font-weight:bold;">Filter Badge</span> <b>Summary Filter:</b> Indicates that a summary filter is active and can be cleared.</li>' +
-        '<li style="margin-bottom:9px;"><span style="color:#dc3545;font-weight:bold;">Red Due Flag</span> <b>Due Date Present:</b> A red flag on the task bar marks the work order due date when the flag option is enabled.</li>' +
+        '<li style="margin-bottom:9px;"><span style="color:#dc3545;font-weight:bold;">Red Due Triangle</span> <b>Due Date Present:</b> An inverted red triangle marks the exact due-date cell on the work order timeline row when enabled.</li>' +
       '</ul>' +
     '</div>';
   }
@@ -4017,8 +4041,8 @@ gantt.config.timeline = true;           // enable timeline mode
             '<span class="gantt-cfg-slider"></span>' +
           '</label>' +
           '<div>' +
-            '<div style="font-weight:bold;font-size:13px;color:#1a1a1a;"><i class="fa fa-flag" style="color:#dc3545;margin-right:6px;"></i>Show Due Date Flag</div>' +
-            '<div style="font-size:11px;color:#888;margin-top:3px;">Show a small red due-date flag on each Work Order task bar</div>' +
+            '<div style="font-weight:bold;font-size:13px;color:#1a1a1a;"><i class="fa fa-caret-down" style="color:#dc3545;margin-right:6px;"></i>Show Due Date Marker</div>' +
+            '<div style="font-size:11px;color:#888;margin-top:3px;">Show an inverted red triangle on each Work Order row at its due date</div>' +
           '</div>' +
         '</div>' +
         '<div class="gantt-cfg-row" id="cfg-row-shutdown">' +
