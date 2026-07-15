@@ -3731,15 +3731,17 @@ gantt.config.timeline = true;           // enable timeline mode
         row('fa-arrows-alt', '#0066cc', 'Scale', 'Cycles the timeline between Day, Week, Month, Quarter, and Year.', 'Use the left and right arrow buttons to change zoom level.') +
         row('fa-check-square', '#28a745', 'Overdue WOs', 'Controls whether older work orders are included in the query.', 'When off, the session query excludes work orders before the selected From Date/current date. When on, the query allows older work orders based on the SQL lookback rule.') +
         row('fa-calendar', '#ff6600', 'Lookahead', 'Sets the planning horizon for work order retrieval.', 'The selected value is passed to the SESSION record and used by the database script to filter EVT_TARGET into Week, Month, Quarter, Year, or 2 Years.') +
-        row('fa-calendar-o', '#dc3545', 'From Date', 'Sets the visible Gantt start date and the lower bound for non-overdue queries.', 'The database script reads it as CRR_STARTDATE.') +
+        row('fa-calendar', '#dc3545', 'From Date', 'Sets the visible Gantt start date and the lower bound for non-overdue queries.', 'The database script reads it as CRR_STARTDATE.') +
         row('fa-info-circle', '#ffc107', 'WO Status', 'Filters work orders by EVT_STATUS.', 'The list is loaded from initialization lookup data so values display as Code - Description.') +
         row('fa-tag', '#17a2b8', 'WO Type', 'Filters work orders by EVT_JOBTYPE.', 'The list is loaded from initialization lookup data and is also used by color configuration.') +
         row('fa-building', '#6c757d', 'Department', 'Filters work orders by department/MRC.', 'The selected value is submitted as CRR_MRC and used by the SESSION SQL.') +
         row('fa-database', '#9933cc', 'DataSpy', 'Applies a predefined data source/filter.', 'DataSpy rows come from configuration and lookup initialization. The edit trigger opens DataSpy maintenance.') +
-        row('fa-search', '#28a745', 'Global Search', 'Searches visible work order fields in the loaded Gantt data.', 'This is a client-side search over the currently loaded tasks.') +
-        row('fa-refresh', '#0066cc', 'Refresh', 'Reloads work orders using current toolbar settings.', 'If unsaved schedule changes exist, the user is warned before refresh discards them.') +
+        // Temporarily hidden from the legend; retain for future Global Search use.
+        // row('fa-search', '#28a745', 'Global Search', 'Searches visible work order fields in the loaded Gantt data.', 'This is a client-side search over the currently loaded tasks.') +
+        row('fa-repeat', '#0066cc', 'Refresh', 'Reloads work orders using current toolbar settings.', 'If unsaved schedule changes exist, the user is warned before refresh discards them.') +
         row('fa-save', '#28a745', 'Save Changes', 'Opens the pending changes review popup before committing schedule changes.', 'The review popup shows old dates, new dates, duration change, status, and per-row revert action.') +
-        row('fa-chart-pie', '#0d6efd', 'Summary', 'Opens work order summary cards and quick filters.', 'Summary filters can be removed from the toolbar indicator. Show All WOs clears summary and column/search filters.') +
+        // Temporarily hidden from the legend; retain for future Summary use.
+        // row('fa-chart-pie', '#0d6efd', 'Summary', 'Opens work order summary cards and quick filters.', 'Summary filters can be removed from the toolbar indicator. Show All WOs clears summary and column/search filters.') +
         row('fa-cog', '#495057', 'Configuration', 'Opens display highlighters and configuration controls.', 'This includes timeline highlights, due-date flags, shutdown highlighting, and ' + configScope + ' management.') +
       '</ul>' +
 
@@ -3769,8 +3771,9 @@ gantt.config.timeline = true;           // enable timeline mode
 
       '<h3 style="' + sectionStyle + '">Filtering And Summary</h3>' +
       '<ul style="' + listStyle + '">' +
-        row('fa-filter', '#6c757d', 'Column Filters', 'Filters inside grid columns hide or show tasks client-side.', 'Column filters work together with summary filters and global search.') +
-        row('fa-chart-pie', '#0d6efd', 'Summary Filters', 'Summary cards filter by Type, Department, Status, or Due Date group.', 'When a summary filter is active, a toolbar indicator appears. Click the indicator to remove the summary filter.') +
+        row('fa-filter', '#6c757d', 'Column Filters', 'Filters inside grid columns hide or show tasks client-side.', 'Column filters apply to the currently loaded Gantt tasks.') +
+        // Temporarily hidden from the legend; retain for future Summary Filter use.
+        // row('fa-chart-pie', '#0d6efd', 'Summary Filters', 'Summary cards filter by Type, Department, Status, or Due Date group.', 'When a summary filter is active, a toolbar indicator appears. Click the indicator to remove the summary filter.') +
         row('fa-exclamation-triangle', '#dc3545', 'Due Date Exceeded', 'A work order is considered exceeded when scheduled end is later than due date.', 'Logic: EVT_SCHEDEND must be greater than EVT_DUE. Work orders ending on or before due date are not exceeded.') +
       '</ul>' +
 
@@ -3780,15 +3783,18 @@ gantt.config.timeline = true;           // enable timeline mode
         row('fa-arrows-h', '#28a745', 'Resize Tasks', 'Drag task edges to change schedule duration.', 'The pending changes popup displays old and new start/end dates before saving.') +
         row('fa-undo', '#dc3545', 'Revert Single Change', 'Reverts one modified work order before saving.', 'Revert restores the original inclusive schedule range and updates the pending count.') +
         row('fa-mouse-pointer', '#ff6600', 'Double Click', 'Opens detailed work order information.', 'The details popup shows field/value data for the selected work order.') +
-        row('fa-hand-o-up', '#ffc107', 'Right Click', 'Opens quick actions for the selected task.', 'Context actions are controlled by the task and screen state.') +
+        row('fa-mouse-pointer', '#ffc107', 'Right Click', 'Opens quick actions for the selected task.', 'Context actions are controlled by the task and screen state.') +
         row('fa-eye', '#17a2b8', 'Hover', 'Shows quick task tooltip details.', 'Tooltip content follows the currently loaded work order data.') +
       '</ul>' +
 
       '<h3 style="' + sectionStyle + '">Status Indicators</h3>' +
       '<ul style="' + listStyle + '">' +
+        row('fa-wrench', '#0066cc', 'Work Order', 'The blue wrench identifies an actual Work Order.', 'This icon distinguishes released Work Orders from future planning events.') +
+        row('fa-hourglass-half', '#d97706', 'Future Event', 'The orange hourglass identifies a Future Event.', 'When available, its sequence number is displayed with the hourglass.') +
         '<li style="margin-bottom:9px;"><span style="background:#ff6600;color:white;padding:4px 12px;border-radius:12px;font-weight:bold;">Orange Badge</span> <b>Modified Tasks:</b> Number of unsaved schedule changes.</li>' +
         '<li style="margin-bottom:9px;"><span style="background:#28a745;color:white;padding:4px 12px;border-radius:12px;font-weight:bold;">Green Badge</span> <b>Total WOs:</b> Number of work orders currently visible after filters.</li>' +
-        '<li style="margin-bottom:9px;"><span style="background:#fff3cd;color:#7a4f01;border:1px solid #ffc107;padding:4px 12px;border-radius:12px;font-weight:bold;">Filter Badge</span> <b>Summary Filter:</b> Indicates that a summary filter is active and can be cleared.</li>' +
+        // Temporarily hidden from the legend; retain for future Filter Badge use.
+        // '<li style="margin-bottom:9px;"><span style="background:#fff3cd;color:#7a4f01;border:1px solid #ffc107;padding:4px 12px;border-radius:12px;font-weight:bold;">Filter Badge</span> <b>Summary Filter:</b> Indicates that a summary filter is active and can be cleared.</li>' +
         '<li style="margin-bottom:9px;"><span style="color:#dc3545;font-weight:bold;">Red Due Flag</span> <b>Due Date Present:</b> A red flag on the task bar marks the work order due date when the flag option is enabled.</li>' +
       '</ul>' +
     '</div>';
