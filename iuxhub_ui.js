@@ -2291,6 +2291,15 @@ gantt.config.timeline = true;           // enable timeline mode
                 }
               }).responseData.pageData.grid.GRIDRESULT.GRID.DATA;
 
+			  // The preview grid can legitimately return no rows. Do not continue
+			  // into the activity query unless a PM record and PM code are present.
+			  if (!Array.isArray(vPMPreviewData)) {
+				vPMPreviewData = vPMPreviewData ? [vPMPreviewData] : [];
+			  }
+			  if (vPMPreviewData.length === 0 || Ext.isEmpty(vPMPreviewData[0].evt_ppm)) {
+				EAM.Messaging.showConfirmation("PM Preview data is not available for this future work order.");
+				return false;
+			  }
 
               ensureProfessionalPopupStyles();
               var pmRecord = (vPMPreviewData && vPMPreviewData.length > 0) ? vPMPreviewData[0] : {};
@@ -2620,10 +2629,14 @@ gantt.config.timeline = true;           // enable timeline mode
           MADDON_FILTER_OPERATOR_1: '=',
           MADDON_FILTER_JOINER_1: 'AND',
           MADDON_FILTER_SEQNUM_1: '1',
-          MADDON_FILTER_VALUE_1: vPMPreviewData[0].evt_ppm,
+          MADDON_FILTER_VALUE_1: pmRecord.evt_ppm,
           
             }
               }).responseData.pageData.grid.GRIDRESULT.GRID.DATA;
+
+	  if (!Array.isArray(vPMActPreviewData)) {
+		vPMActPreviewData = vPMActPreviewData ? [vPMActPreviewData] : [];
+	  }
         
       var groupedData = {};
 
