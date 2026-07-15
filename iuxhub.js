@@ -814,6 +814,9 @@
             width: 115,
             height: 28,
             id: "searchgantt",
+            // Temporarily hidden until Global Search behavior is corrected.
+            // Remove this property (or set it to false) to show the field again.
+            hidden: true,
             margin: '-5 6 5 0',
             fieldStyle: 'font-size:80%;',
             emptyText: 'Global Search',
