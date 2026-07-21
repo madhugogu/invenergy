@@ -109,7 +109,7 @@
             //fieldLabel: 'From',
             id: 'StartDate_upd',
             value: new Date(vRecordWO.schedstartdate),
-            //format: "d/m/y",
+            format: getExtDisplayDateFormat()
           }, {
             xtype: 'uxdate',
             anchor: '100%',
@@ -117,7 +117,7 @@
             //fieldLabel: 'From',
             id: 'EndDate_upd',
             value: new Date(vRecordWO.schedenddate),
-            //format: "d/m/y",
+            format: getExtDisplayDateFormat()
           }, {
             name: 'woupd_assignto',
             id: "woupd_assignto",
@@ -155,12 +155,14 @@
         height: 420,
         id: 'WoUpdatePanel1',
         modal: true,
+        constrain: true,
+        constrainHeader: true,
         closable: true,
         align: 'center', // Align the window contents in center
         items: [panel],
         layout: 'fit',
         modal: true,
-        cls: 'iux-modern-window iux-product-window',
+        cls: 'iux-modern-window iux-product-window iux-popup-window',
         header: {
           style: {
             'background-color': '#383838',
@@ -282,6 +284,7 @@
         }
       });
       win.show();
+      applyIuxPopupViewport(win);
     }
 
   }
@@ -650,14 +653,14 @@
     var value = task[fieldName] || task[fallbackName];
     if (Ext.isEmpty(value)) return '-';
     var date = parseGanttDateValue(value);
-    return isNaN(date.getTime()) ? value : formatDateDMY(date);
+    return isNaN(date.getTime()) ? value : formatDisplayDate(date);
   }
 
   function getBulkNewValueDisplay(fieldName, value) {
     if (fieldName === 'workorderstatus') return getBulkLookupDescription(gGanttGlobal.WorkorderStatusStore, value);
     if (fieldName === 'assignedto') return getBulkLookupDescription(gGanttGlobal.Personal, value);
     if (fieldName === 'schedgroup') return getBulkLookupDescription(gGanttGlobal.SchedGroups, value);
-    if (fieldName === 'schedstartdate' || fieldName === 'schedenddate') return formatDateDMY(new Date(value));
+    if (fieldName === 'schedstartdate' || fieldName === 'schedenddate') return formatDisplayDate(new Date(value));
     return value || '-';
   }
 
@@ -730,11 +733,13 @@
 
     var reviewWin = Ext.create('Ext.window.Window', {
       id: 'bulkReviewWin',
-      cls: 'iux-product-window',
+      cls: 'iux-product-window iux-popup-window',
       title: '<i class="fa fa-list-alt" style="margin-right:8px;"></i><b style="color:white;">Review Bulk Edit Changes (' + tasks.length + ')</b>',
-      width: 980,
-      height: 560,
+      width: getIuxPopupSize(980, 560).width,
+      height: getIuxPopupSize(980, 560).height,
       modal: true,
+      constrain: true,
+      constrainHeader: true,
       scrollable: true,
       bodyPadding: 0,
       header: { style: { 'background-color': '#383838', 'color': '#ffffff' } },
@@ -768,6 +773,7 @@
       buttonAlign: 'right'
     });
     reviewWin.show();
+    applyIuxPopupViewport(reviewWin);
   }
 
   function saveBulkWorkOrderUpdates(tasks, values, win, reviewWin) {
@@ -880,12 +886,14 @@
         row('bulkStartApply', 'Start Date', {
           xtype: 'uxdate',
           id: 'bulkStartDate',
-          fieldLabel: 'Start Date'
+          fieldLabel: 'Start Date',
+          format: getExtDisplayDateFormat()
         }),
         row('bulkEndApply', 'End Date', {
           xtype: 'uxdate',
           id: 'bulkEndDate',
-          fieldLabel: 'End Date'
+          fieldLabel: 'End Date',
+          format: getExtDisplayDateFormat()
         }),
         row('bulkAssignedToApply', 'Assigned To', {
           xtype: 'combobox',
@@ -926,9 +934,11 @@
       height: 485,
       id: 'BulkWoUpdatePanel',
       modal: true,
+      constrain: true,
+      constrainHeader: true,
       closable: true,
       layout: 'fit',
-      cls: 'iux-modern-window iux-product-window',
+      cls: 'iux-modern-window iux-product-window iux-popup-window',
       items: [panel],
       header: { style: { 'background-color': '#383838', 'color': '#ffffff' } },
       bbar: {
@@ -947,6 +957,7 @@
       }
     });
     win.show();
+    applyIuxPopupViewport(win);
   }
 
   // Shift Assignment Planner moved to IUXHUB.shift.js.
@@ -1060,11 +1071,52 @@
     // Styles moved to IUXHUB_CSS.css under IUXHUB_MOVED_FROM_JS.
   }
 
+  function getIuxViewportSize() {
+    if (Ext.getBody && Ext.getBody()) return Ext.getBody().getViewSize();
+    return {
+      width: document.documentElement.clientWidth || document.body.clientWidth || 1024,
+      height: document.documentElement.clientHeight || document.body.clientHeight || 768
+    };
+  }
+
+  function getIuxPopupSize(width, height, options) {
+    var viewportSize = getIuxViewportSize();
+    var margin = options && options.margin ? options.margin : 32;
+    var minWidth = options && options.minWidth ? options.minWidth : 320;
+    var minHeight = options && options.minHeight ? options.minHeight : 220;
+    return {
+      width: Math.min(width, Math.max(minWidth, viewportSize.width - margin)),
+      height: Math.min(height, Math.max(minHeight, viewportSize.height - margin))
+    };
+  }
+
+  function applyIuxPopupViewport(win, options) {
+    if (!win) return;
+    options = options || {};
+    if (win.center) win.center();
+    if (win.getPosition && win.setPagePosition) {
+      var pos = win.getPosition();
+      win.setPagePosition(Math.max(16, pos[0]), Math.max(16, pos[1]));
+    }
+    if (options.closeOnMaskClick) {
+      var modalMask = Ext.getBody().down('.x-mask');
+      if (modalMask) {
+        modalMask.on('click', function() {
+          if (!win.destroyed) win.close();
+        }, null, { single: true });
+      }
+    }
+  }
+
   // ==========================================================================
   // 04. Shared Scheduling, Date, and Highlight Helpers
   // ==========================================================================
   function parseGanttDateValue(value) {
     if (value instanceof Date) return new Date(value);
+    if (window.IUXHUB_PARSE_DISPLAY_DATE) {
+      var displayDate = window.IUXHUB_PARSE_DISPLAY_DATE(value);
+      if (displayDate) return displayDate;
+    }
     if (typeof value === 'string') {
       var cleanValue = value.split('T')[0];
       var parts = cleanValue.split('-');
@@ -1088,16 +1140,26 @@
     return getDateKey(value);
   }
 
+  function getCalendarDateOnly(value) {
+    var date = parseGanttDateValue(value);
+    if (!date || isNaN(date.getTime())) return null;
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  function getGanttInclusiveEndDate(exclusiveEndDate) {
+    var end = getCalendarDateOnly(exclusiveEndDate);
+    if (!end) return null;
+    end.setDate(end.getDate() - 1);
+    return end;
+  }
+
   function getTaskScheduledEndDate(task) {
     if (!task) return null;
     if (task.end_date) {
-      var ganttEnd = parseGanttDateValue(task.end_date);
-      if (!isNaN(ganttEnd.getTime())) {
-        ganttEnd.setDate(ganttEnd.getDate() - 1);
-        return ganttEnd;
-      }
+      var ganttEnd = getGanttInclusiveEndDate(task.end_date);
+      if (ganttEnd) return ganttEnd;
     }
-    if (!Ext.isEmpty(task.EVT_SCHEDEND)) return parseGanttDateValue(task.EVT_SCHEDEND);
+    if (!Ext.isEmpty(task.EVT_SCHEDEND)) return getCalendarDateOnly(task.EVT_SCHEDEND);
     return null;
   }
 
@@ -1112,7 +1174,8 @@
   }
 
   function toGanttExclusiveEndDate(inclusiveEndDate) {
-    var end = new Date(inclusiveEndDate);
+    var end = getCalendarDateOnly(inclusiveEndDate) || new Date(inclusiveEndDate);
+    if (isNaN(end.getTime())) return end;
     end.setDate(end.getDate() + 1);
     return end;
   }
@@ -1127,12 +1190,9 @@
       if (Ext.isEmpty(task.PRJ_SHUTDOWN)) return;
 
       var useCurrentDates = task.modified && task.start_date && task.end_date;
-      var start = useCurrentDates ? new Date(task.start_date) : (task.originalStart ? new Date(task.originalStart) : new Date(task.EVT_TARGET));
-      var end = useCurrentDates ? new Date(new Date(task.end_date).getTime() - 1) : (task.originalEnd ? new Date(task.originalEnd) : new Date(task.EVT_SCHEDEND));
-      if (isNaN(start.getTime()) || isNaN(end.getTime())) return;
-
-      start = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-      end = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+      var start = useCurrentDates ? getCalendarDateOnly(task.start_date) : getCalendarDateOnly(task.originalStart || task.EVT_TARGET);
+      var end = useCurrentDates ? getGanttInclusiveEndDate(task.end_date) : getCalendarDateOnly(task.originalEnd || task.EVT_SCHEDEND);
+      if (!start || !end) return;
       if (end < start) {
         var tmp = start;
         start = end;
@@ -1844,19 +1904,12 @@ gantt.config.timeline = true;           // enable timeline mode
     };
 
     gantt.templates.tooltip_text = function (start, end, task) {
+      try {
+        var screen = EAM && EAM.Utils && EAM.Utils.getScreen ? EAM.Utils.getScreen() : null;
+        if (screen && screen.userFunction && screen.userFunction !== 'IUXHUB') return "";
+      } catch (e) {}
+      if (!document.getElementById('expertshub') || !document.getElementById('gantt_here')) return "";
       if (gGanttGlobal.contextMenuOpen) return "";
-
-      function formatDueDate(value) {
-        var match = String(value || "").match(/^(\d{2})-(\d{2})-(\d{4})$/);
-        if (!match) return value || "-";
-
-        var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        var monthIndex = Number(match[2]) - 1;
-        if (monthIndex < 0 || monthIndex > 11) return value;
-
-        return match[1] + "-" + monthNames[monthIndex] + "-" + match[3].slice(-2);
-      }
 
       function row(extra, col1lbl, col1val, col2lbl, col2val) {
         var r = "<tr" + (extra ? " class='iux-task-tooltip-sep'" : "") + ">";
@@ -1881,7 +1934,7 @@ gantt.config.timeline = true;           // enable timeline mode
       vHTML += row(false, "Object:",       task.EVT_OBJECT || "-",                  "Organization:", task.EVT_OBJECT_ORG || "-");
       vHTML += row(true,  "Location:",     task.OBJ_LOCATION  || "-",               "Org:",          task.EVT_ORG || "-");
       vHTML += row(true,  "Status:",       (task.EVT_STATUS_DESC || task.EVT_STATUS) || "-",               "Type:",         task.EVT_JOBTYPE || "-");
-      vHTML += row(true,  "Due Date:",     formatDueDate(task.EVT_DUE),             "PM Code:",      task.EVT_PPM || "-");
+      vHTML += row(true,  "Due Date:",     task.EVT_DUE ? formatDisplayDate(task.EVT_DUE) : "-",             "PM Code:",      task.EVT_PPM || "-");
       vHTML += row(true,  "Est. Hours:",   task.ACT_EST       || "-",               "Trades:",       task.LISTOFTRADES || "-");
       vHTML += row(true,  "Shutdown Code: ", task.PRJ_SHUTDOWN || " -",               "No. of People:", task.ACT_PERSONS || "-");
       vHTML += "</table></div>";
@@ -2146,8 +2199,8 @@ gantt.config.timeline = true;           // enable timeline mode
       if (!gGanttGlobal.PendingChanges[id]) {
         var currentTask = gantt.getTask(id);
         gGanttGlobal.PendingChanges[id] = {
-          oldStart : currentTask.originalStart ? new Date(currentTask.originalStart) : new Date(currentTask.start_date),
-          oldEnd   : currentTask.originalEnd   ? new Date(currentTask.originalEnd)   : new Date(currentTask.end_date),
+          oldStart : getCalendarDateOnly(currentTask.originalStart || currentTask.start_date),
+          oldEnd   : currentTask.originalEnd ? getCalendarDateOnly(currentTask.originalEnd) : getTaskScheduledEndDate(currentTask),
           woCode   : currentTask.EVT_CODE,
           woOrg    : currentTask.EVT_ORG
         };
@@ -2161,8 +2214,8 @@ gantt.config.timeline = true;           // enable timeline mode
       if (!gGanttGlobal.PendingChanges[id]) {
         gGanttGlobal.PendingChanges[id] = { woCode: t.EVT_CODE, woOrg: t.EVT_ORG };
       }
-      gGanttGlobal.PendingChanges[id].newStart = new Date(t.start_date);
-      gGanttGlobal.PendingChanges[id].newEnd   = new Date(t.end_date);
+      gGanttGlobal.PendingChanges[id].newStart = getCalendarDateOnly(t.start_date);
+      gGanttGlobal.PendingChanges[id].newEnd   = getGanttInclusiveEndDate(t.end_date) || getTaskScheduledEndDate(t);
       gGanttGlobal.TasksModified.push(id);
       gGanttGlobal.TasksModified = Array.from(new Set(gGanttGlobal.TasksModified));
       gantt.getTask(id).modified = 1;
@@ -2355,69 +2408,41 @@ gantt.config.timeline = true;           // enable timeline mode
 
 
 
-              var objectPanel = Ext.create('Ext.grid.Panel', {
-                title: '<b>Objects Covered</b>',
-                width: 800,
-                height: 280,
-                margin: '0 0 12 0',
-                bodyPadding: 0,
-                columnLines: true,
-                stripeRows: true,
-                columns: [{
-                    text: 'Type',
-                    dataIndex: 'value1',
-                    width: 90
-                  }, {
-                    text: 'Object',
-                    dataIndex: 'value2',
-                    width: 110
-                  }, {
-                    text: 'Description',
-                    dataIndex: 'value3',
-                    flex: 1
-                  }, {
-                    text: 'Position ID',
-                    dataIndex: 'value5',
-                    width: 100
-                  }, {
-                    text: 'Physical ID',
-                    dataIndex: 'value6',
-                    width: 100
-                  }, {
-                    text: 'Serial Number',
-                    dataIndex: 'value11',
-                    width: 120
-                  }
-                ],
+              function renderPmPreviewObjectField(label, value, extraCls) {
+                return '<div class="iux-pm-object-field' + (extraCls ? ' ' + extraCls : '') + '">' +
+                  '<span>' + safeHtml(label) + '</span>' +
+                  '<strong>' + safeHtml(value || '-') + '</strong>' +
+                '</div>';
+              }
 
-                plugins: [{
-                    ptype: 'rowexpander',
-                    id: 'rowexpander',
-                    iconCls: 'fa fa-search',
-                    rowBodyTpl: '<table style="width:100%;padding:10px;border-collapse:collapse;"><tr><td style="padding:4px 8px;"><b>Legacy Tag</b></td><td style="padding:4px 8px;">:</td><td style="padding:4px 8px;">{value4}</td></tr>' +
-                    '<tr><td style="padding:4px 8px;"><b>Class Survey</b></td><td style="padding:4px 8px;">:</td><td style="padding:4px 8px;">{value7}</td></tr>' +
-                    '<tr><td style="padding:4px 8px;"><b>CSA</b></td><td style="padding:4px 8px;">:</td><td style="padding:4px 8px;">{value8}</td></tr>' +
-                    '<tr><td style="padding:4px 8px;"><b>Manufacturer</b></td><td style="padding:4px 8px;">:</td><td style="padding:4px 8px;">{value9}</td></tr>' +
-                    '<tr><td style="padding:4px 8px;"><b>Manufacturer Model</b></td><td style="padding:4px 8px;">:</td><td style="padding:4px 8px;">{value10}</td></tr>' +
-                    '<tr><td style="padding:4px 8px;"><b>Location</b></td><td style="padding:4px 8px;">:</td><td style="padding:4px 8px;">{value12}</td></tr>' +
-                    '<tr><td style="padding:4px 8px;"><b>Location Detail</b></td><td style="padding:4px 8px;">:</td><td style="padding:4px 8px;">{value13}</td></tr></table>'
-                  }
-
-                ],
-              listeners: {
-                    viewready: function (grid) {
-                      var expander = grid.getPlugin('rowexpander');
-                      grid.store.each(function (record, index) {
-                        expander.toggleRow(index, record);
-                    });
-                    }
-                },
-
-                store: {
-                    fields: ['value1', 'value2', 'value3', 'value4','value5','value6', 'value7', 'value8', 'value9', 'value10', 'value11','value12','value13'], // Add more fields as needed
-                    data: [] 
+              function renderPmPreviewObjects(rows) {
+                if (!rows || !rows.length) {
+                  return '<div class="iux-pm-object-empty">No covered objects available.</div>';
                 }
-            });
+
+                var html = '';
+                rows.forEach(function(row) {
+                  html += '<div class="iux-pm-object-card">' +
+                    '<div class="iux-pm-object-grid">' +
+                      renderPmPreviewObjectField('Object', row.value2, 'iux-pm-object-primary') +
+                      renderPmPreviewObjectField('Type', row.value1) +
+                      renderPmPreviewObjectField('Serial Number', row.value11) +
+                      renderPmPreviewObjectField('Description', row.value3, 'iux-pm-object-wide') +
+                      renderPmPreviewObjectField('Position ID', row.value5) +
+                      renderPmPreviewObjectField('Physical ID', row.value6) +
+                      renderPmPreviewObjectField('Legacy Tag', row.value4) +
+                      renderPmPreviewObjectField('Class Survey', row.value7) +
+                      renderPmPreviewObjectField('CSA', row.value8) +
+                      renderPmPreviewObjectField('Manufacturer', row.value9) +
+                      renderPmPreviewObjectField('Manufacturer Model', row.value10) +
+                      renderPmPreviewObjectField('Location', row.value12) +
+                      renderPmPreviewObjectField('Location Detail', row.value13, 'iux-pm-object-wide') +
+                    '</div>' +
+                  '</div>';
+                });
+                return html;
+              }
+
                 var transformedData = [];
                 if (vPMPreviewData.length > 0) {
                     // Extract the first row of data
@@ -2441,23 +2466,46 @@ gantt.config.timeline = true;           // enable timeline mode
                     transformedData.push(rowData);
                 //});
             }
-                objectPanel.getStore().loadData(transformedData);
+              var objectPanel = Ext.create('Ext.panel.Panel', {
+                title: '<b>Objects Covered</b>',
+                cls: 'iux-pm-object-panel',
+                width: 800,
+                margin: '0 0 12 0',
+                collapsible: true,
+                collapsed: false,
+                bodyPadding: 12,
+                html: renderPmPreviewObjects(transformedData),
+                header: {
+                  style: {
+                    'background-color': '#383838',
+                    'color': '#ffffff'
+                  }
+                }
+              });
                 
             
 
+                          var previewViewportWidth = Ext.Element && Ext.Element.getViewportWidth ? Ext.Element.getViewportWidth() : (document.documentElement.clientWidth || document.body.clientWidth || 920);
+                          var previewViewportHeight = Ext.Element && Ext.Element.getViewportHeight ? Ext.Element.getViewportHeight() : (document.documentElement.clientHeight || document.body.clientHeight || 920);
+                          var previewWindowMargin = 32;
+                          var previewWindowWidth = Math.min(920, Math.max(320, previewViewportWidth - previewWindowMargin));
+                          var previewWindowHeight = Math.min(920, Math.max(160, previewViewportHeight - previewWindowMargin));
+
                           var mywindow = Ext.create('Ext.window.Window', {
                 title: '<i class="fa fa-eye" style="margin-right:8px;"></i><b style="color: white;">PM Preview</b>',
-                cls: 'iux-product-window',
-                width: 920,
+                cls: 'iux-product-window iux-popup-window',
+                width: previewWindowWidth,
                 modal: true,
                 padding: '12 12 12 12',
-                height: 920,
+                height: previewWindowHeight,
                 layout: {
                     type: 'vbox',
                     align: 'stretch'
                 },
                 closable: true,
                 resizable: true,
+                constrain: true,
+                constrainHeader: true,
                 style: {
                     'border': '1px solid #cbd5e1',
                   'border-radius':'14px'
@@ -2470,6 +2518,11 @@ gantt.config.timeline = true;           // enable timeline mode
                   style: {
                     'background-color': '#383838',
                     'color': '#ffffff'
+                  }
+                },
+                listeners: {
+                  show: function(win) {
+                    applyIuxPopupViewport(win, { closeOnMaskClick: true });
                   }
                 }
               });
@@ -2515,6 +2568,11 @@ gantt.config.timeline = true;           // enable timeline mode
                 }
 
                 var documentGrid = {};
+                if (!Ext.isEmpty(ActDocumentArray)) {
+                  ActDocumentArray = ActDocumentArray.filter(function(doc) {
+                    return doc && !Ext.isEmpty(doc.doc_filename) && String(doc.doc_filename).trim().toLowerCase() !== 'null';
+                  });
+                }
                 if (!Ext.isEmpty(ActDocumentArray)) {
                   documentGrid = Ext.create('Ext.grid.Panel', {
                     title: "<b>Documents</b>",
@@ -2701,6 +2759,7 @@ gantt.config.timeline = true;           // enable timeline mode
               var myPanel = {};
 
               var AccordionPanel = Ext.create('Ext.panel.Panel', {
+                cls: 'iux-pm-activity-details-panel',
                 autoScroll: true,
                 flex: 1,
                 scrollable: "y",
@@ -2711,21 +2770,15 @@ gantt.config.timeline = true;           // enable timeline mode
                 },
                 tbar: [{
                     xtype: 'tbtext',
-                    text: '<b><i class="fa fa-list-ul" style="margin-right:6px;color:#0066cc;"></i>Activity Details</b>',
-                    style: {
-                      'background-color': '#eef6ff',
-                      'border': '1px solid #bfdbfe',
-                      'border-radius': '6px',
-                      'padding':'8px 12px',
-                      'font-weight': 'bold'
-                    }
+                    cls: 'iux-pm-activity-toolbar-label',
+                    text: '<b><i class="fa fa-list-ul" style="margin-right:6px;"></i>Activity Details</b>'
                   }, {
                     xtype: 'tbfill'
                   }, {
                     xtype: 'button',
+                    cls: 'iux-pm-activity-toolbar-button',
                     text: '<i class="fa fa-compress" style="margin-right:5px;"></i>Collapse All',
                     style: {
-                      'background-color': '#f0f0f0',
                       'border-radius': '6px',
                       'margin': '0 5 0 0'
                     },
@@ -2739,9 +2792,9 @@ gantt.config.timeline = true;           // enable timeline mode
                     }
                   }, {
                     xtype: 'button',
+                    cls: 'iux-pm-activity-toolbar-button',
                     text: '<i class="fa fa-expand" style="margin-right:5px;"></i>Expand All',
                     style: {
-                      'background-color': '#f0f0f0',
                       'border-radius': '6px'
                     },
                     handler: function () {
@@ -2862,7 +2915,7 @@ gantt.config.timeline = true;           // enable timeline mode
           value: task.OBJ_LOCATION || 'N/A'
         }, {
           name: '<i class="fa fa-calendar-check-o" style="color:#dc3545;margin-right:6px;"></i>Due Date',
-          value: task.EVT_DUE || 'N/A'
+          value: task.EVT_DUE ? formatDisplayDate(task.EVT_DUE) : 'N/A'
         }, {
           name: '<i class="fa fa-hourglass-half" style="color:#ffc107;margin-right:6px;"></i>Estimated Hours',
           value: task.ACT_EST || 'N/A'
@@ -2910,14 +2963,15 @@ gantt.config.timeline = true;           // enable timeline mode
 
       var win = Ext.create('Ext.window.Window', {
         title: '<i class="fa fa-file-alt" style="margin-right:8px;"></i><b>Work Order Details</b>',
-        cls: 'iux-product-window iux-workorder-details-window',
+        cls: 'iux-product-window iux-popup-window iux-workorder-details-window',
         items: [grid],
         layout: 'fit',
-        width: 650,
-        height: 480,
+        width: getIuxPopupSize(650, 480).width,
+        height: getIuxPopupSize(650, 480).height,
         id: 'mypopup',
         modal: true,
         constrain: true,
+        constrainHeader: true,
         resizable: true,
         bodyPadding: 10,
         header: {
@@ -2971,7 +3025,7 @@ gantt.config.timeline = true;           // enable timeline mode
       });
       
       win.show();
-      win.center();
+      applyIuxPopupViewport(win, { closeOnMaskClick: true });
     });
 
     applyDayScaleConfigurationToZoomConfig();
@@ -3027,6 +3081,141 @@ gantt.config.timeline = true;           // enable timeline mode
     var vYear  = vDate.getFullYear();
     return ("0" + vDay.toString()).slice(-2) + '-' + ("0" + vMonth.toString()).slice(-2) + '-' + vYear;
   }
+
+  function getDisplayDateFormat() {
+    var experience = getConfiguredExperience ? getConfiguredExperience() : {};
+    return String((experience && experience.displayDateFormat) || "dd-mm-yyyy").toLowerCase();
+  }
+
+  function getDisplayDateFormatOptions() {
+    return [
+      { code: "dd-mm-yyyy", label: "DD-MM-YYYY", preview: "24-05-2026" },
+      { code: "mm/dd/yyyy", label: "MM/DD/YYYY", preview: "05/24/2026" },
+      { code: "yyyy-mm-dd", label: "YYYY-MM-DD", preview: "2026-05-24" },
+      { code: "dd-mmm-yy", label: "DD-MMM-YY", preview: "24-May-26" },
+      { code: "dd mmm yyyy", label: "DD MMM YYYY", preview: "24 May 2026" }
+    ];
+  }
+
+  function formatDisplayDate(value) {
+    if (Ext.isEmpty(value)) return "";
+    var date = parseGanttDateValue(value);
+    if (!date || isNaN(date.getTime())) return value;
+
+    var day = ("0" + date.getDate()).slice(-2);
+    var month = ("0" + (date.getMonth() + 1)).slice(-2);
+    var year = String(date.getFullYear());
+    var shortYear = year.slice(-2);
+    var monthName = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.getMonth()];
+
+    switch (getDisplayDateFormat()) {
+      case "mm/dd/yyyy":
+        return month + "/" + day + "/" + year;
+      case "yyyy-mm-dd":
+        return year + "-" + month + "-" + day;
+      case "dd-mmm-yy":
+        return day + "-" + monthName + "-" + shortYear;
+      case "dd mmm yyyy":
+        return day + " " + monthName + " " + year;
+      case "dd-mm-yyyy":
+      default:
+        return day + "-" + month + "-" + year;
+    }
+  }
+
+  function parseDisplayDate(value) {
+    if (Ext.isEmpty(value)) return null;
+    if (value instanceof Date) return isNaN(value.getTime()) ? null : new Date(value.getFullYear(), value.getMonth(), value.getDate());
+
+    var text = String(value).trim();
+    var monthNames = {
+      jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4,
+      may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8, sep: 9, sept: 9,
+      september: 9, oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12
+    };
+
+    function makeDate(year, month, day) {
+      year = Number(year);
+      month = Number(month);
+      day = Number(day);
+      if (year < 100) year += 2000;
+      var parsed = new Date(year, month - 1, day);
+      if (parsed.getFullYear() !== year || parsed.getMonth() !== month - 1 || parsed.getDate() !== day) return null;
+      return parsed;
+    }
+
+    var match = /^(\d{4})[-\/]([0-1]?\d)[-\/]([0-3]?\d)$/.exec(text);
+    if (match) return makeDate(match[1], match[2], match[3]);
+
+    match = /^([0-3]?\d)-([0-1]?\d)-(\d{4})$/.exec(text);
+    if (match) return makeDate(match[3], match[2], match[1]);
+
+    match = /^([0-1]?\d)\/([0-3]?\d)\/(\d{4})$/.exec(text);
+    if (match) return makeDate(match[3], match[1], match[2]);
+
+    match = /^([0-3]?\d)[-\s]([A-Za-z]{3,9})[-\s](\d{2}|\d{4})$/.exec(text);
+    if (match) {
+      var month = monthNames[String(match[2]).toLowerCase()];
+      if (!month) return null;
+      return makeDate(match[3], month, match[1]);
+    }
+
+    var fallback = new Date(text);
+    return isNaN(fallback.getTime()) ? null : new Date(fallback.getFullYear(), fallback.getMonth(), fallback.getDate());
+  }
+
+  function getExtDisplayDateFormat() {
+    switch (getDisplayDateFormat()) {
+      case "mm/dd/yyyy":
+        return "m/d/Y";
+      case "yyyy-mm-dd":
+        return "Y-m-d";
+      case "dd-mmm-yy":
+        return "d-M-y";
+      case "dd mmm yyyy":
+        return "d M Y";
+      case "dd-mm-yyyy":
+      default:
+        return "d-m-Y";
+    }
+  }
+
+  function getExportDateFormat() {
+    switch (getDisplayDateFormat()) {
+      case "mm/dd/yyyy":
+        return "mm/dd/yyyy";
+      case "yyyy-mm-dd":
+        return "yyyy-mm-dd";
+      case "dd-mmm-yy":
+        return "dd-mmm-yy";
+      case "dd mmm yyyy":
+        return "dd mmm yyyy";
+      case "dd-mm-yyyy":
+      default:
+        return "dd-mm-yyyy";
+    }
+  }
+
+  function formatDateISO(value) {
+    var date = parseDisplayDate(value);
+    if (!date) return "";
+    var month = date.getMonth() + 1;
+    var day = date.getDate();
+    return date.getFullYear() + "-" + (month < 10 ? "0" : "") + month + "-" + (day < 10 ? "0" : "") + day;
+  }
+
+  function getDisplayDatePlaceholder() {
+    var options = getDisplayDateFormatOptions();
+    var format = getDisplayDateFormat();
+    for (var i = 0; i < options.length; i++) {
+      if (options[i].code === format) return options[i].preview;
+    }
+    return "24-05-2026";
+  }
+
+  window.IUXHUB_FORMAT_DISPLAY_DATE = formatDisplayDate;
+  window.IUXHUB_PARSE_DISPLAY_DATE = parseDisplayDate;
+  window.IUXHUB_GET_DISPLAY_DATE_PLACEHOLDER = getDisplayDatePlaceholder;
 
   function getCalendarDayDiff(fromDate, toDate) {
     var from = new Date(fromDate);
@@ -3399,12 +3588,19 @@ gantt.config.timeline = true;           // enable timeline mode
     });
     var rowDensityHtml = '<option value="COMFORTABLE"' + (experience.rowDensity === 'COMFORTABLE' ? ' selected' : '') + '>Comfortable</option>' +
       '<option value="COMPACT"' + (experience.rowDensity === 'COMPACT' ? ' selected' : '') + '>Compact</option>';
+    var displayDateFormatHtml = "";
+    getDisplayDateFormatOptions().forEach(function(option) {
+      displayDateFormatHtml += '<option value="' + safeHtml(option.code) + '"' + (option.code === experience.displayDateFormat ? ' selected' : '') + '>' +
+        safeHtml(option.label + ' - ' + option.preview) +
+      '</option>';
+    });
     return '<div class="gantt-user-config-section">' +
       '<div class="gantt-user-config-title"><i class="fa fa-sliders"></i> Experience</div>' +
       '<div class="gantt-user-config-note">Grid width is capped at 40%. Tooltip delay is capped at 1500 ms. Resource overload threshold is capped at 24 hours.</div>' +
       '<div class="gantt-user-config-grid">' +
         '<label>Default Grid Width %<input id="gantt-exp-grid-width" type="number" min="15" max="40" value="' + safeHtml(experience.gridWidthPercent) + '"' + disabled + '></label>' +
         '<label>Tooltip Delay (ms)<input id="gantt-exp-tooltip-delay" type="number" min="0" max="1500" step="50" value="' + safeHtml(experience.tooltipDelayMs) + '"' + disabled + '></label>' +
+        '<label>Display Date Format<select id="gantt-exp-date-format"' + disabled + '>' + displayDateFormatHtml + '</select></label>' +
         '<label>Timeline Highlight Field<select id="gantt-exp-highlight-field"' + disabled + '>' + optionHtml + '</select></label>' +
         '<label>Resource Overload Threshold<input id="gantt-exp-overload-threshold" type="number" min="1" max="24" step="0.5" value="' + safeHtml(experience.resourceOverloadThresholdHours) + '"' + disabled + '></label>' +
         '<label>Show Task Text Mode<select id="gantt-exp-task-text-mode"' + disabled + '>' + textModeHtml + '</select></label>' +
@@ -3420,6 +3616,7 @@ gantt.config.timeline = true;           // enable timeline mode
     var experience = cloneJsonObject(fallback || getDefaultExperienceConfiguration());
     var gridWidthEl = root.querySelector('#gantt-exp-grid-width');
     var tooltipDelayEl = root.querySelector('#gantt-exp-tooltip-delay');
+    var displayDateFormatEl = root.querySelector('#gantt-exp-date-format');
     var highlightFieldEl = root.querySelector('#gantt-exp-highlight-field');
     var altRowsEl = root.querySelector('#gantt-exp-alt-rows');
     var overloadEl = root.querySelector('#gantt-exp-overload-threshold');
@@ -3429,6 +3626,7 @@ gantt.config.timeline = true;           // enable timeline mode
     var readonlyStatusesEl = root.querySelector('#gantt-exp-readonly-statuses');
     experience.gridWidthPercent = gridWidthEl ? gridWidthEl.value : experience.gridWidthPercent;
     experience.tooltipDelayMs = tooltipDelayEl ? tooltipDelayEl.value : experience.tooltipDelayMs;
+    experience.displayDateFormat = displayDateFormatEl && !Ext.isEmpty(displayDateFormatEl.value) ? displayDateFormatEl.value : experience.displayDateFormat;
     experience.timelineHighlightField = highlightFieldEl && !Ext.isEmpty(highlightFieldEl.value) ? highlightFieldEl.value : experience.timelineHighlightField;
     experience.alternateGanttRows = altRowsEl ? altRowsEl.checked : experience.alternateGanttRows;
     experience.resourceOverloadThresholdHours = overloadEl ? overloadEl.value : experience.resourceOverloadThresholdHours;
@@ -3441,12 +3639,13 @@ gantt.config.timeline = true;           // enable timeline mode
 
   function renderConfiguredDateRows(items, rowClass, readOnly) {
     var disabled = readOnly ? " disabled" : "";
+    var placeholder = getDisplayDatePlaceholder();
     var rows = "";
     (items || []).forEach(function(item) {
       rows +=
         '<tr class="' + rowClass + '">' +
           '<td><input class="gantt-config-date-code" type="text" value="' + configInputValue(item.code) + '"' + disabled + '></td>' +
-          '<td><input class="gantt-config-date-value" type="date" value="' + configInputValue(item.value) + '"' + disabled + '></td>' +
+          '<td><input class="gantt-config-date-value" type="text" placeholder="' + configInputValue(placeholder) + '" value="' + configInputValue(item.value ? formatDisplayDate(item.value) : '') + '"' + disabled + '></td>' +
           '<td><input class="gantt-config-date-desc" type="text" value="' + configInputValue(item.description) + '"' + disabled + '></td>' +
           '<td>' + (readOnly ? '' : '<button type="button" class="gantt-config-date-remove"><i class="fa fa-trash"></i></button>') + '</td>' +
         '</tr>';
@@ -3478,7 +3677,7 @@ gantt.config.timeline = true;           // enable timeline mode
       var codeEl = row.querySelector('.gantt-config-date-code');
       var valueEl = row.querySelector('.gantt-config-date-value');
       var descEl = row.querySelector('.gantt-config-date-desc');
-      var value = valueEl && !Ext.isEmpty(valueEl.value) ? valueEl.value : "";
+      var value = valueEl && !Ext.isEmpty(valueEl.value) ? formatDateISO(valueEl.value) : "";
       if (Ext.isEmpty(value)) return;
       rows.push({
         code: codeEl && !Ext.isEmpty(codeEl.value) ? codeEl.value : type + "_" + (index + 1),
@@ -3630,11 +3829,13 @@ gantt.config.timeline = true;           // enable timeline mode
 
     var win = Ext.create('Ext.window.Window', {
       id: 'ganttUserConfigWin',
-      cls: 'iux-product-window',
+      cls: 'iux-product-window iux-popup-window',
       title: '<i class="fa fa-user-cog" style="margin-right:8px;"></i><b style="color:white;">' + getConfigurationScopeLabel() + '</b>',
-      width: 760,
-      height: 620,
+      width: getIuxPopupSize(760, 620).width,
+      height: getIuxPopupSize(760, 620).height,
       modal: true,
+      constrain: true,
+      constrainHeader: true,
       scrollable: true,
       bodyPadding: 0,
       header: { style: { 'background-color': '#383838', 'color': '#ffffff' } },
@@ -3762,6 +3963,7 @@ gantt.config.timeline = true;           // enable timeline mode
       buttonAlign: 'right'
     });
     win.show();
+    applyIuxPopupViewport(win);
   }
 
   function buildSystemLegendHtml(cfgState) {
@@ -3870,11 +4072,13 @@ gantt.config.timeline = true;           // enable timeline mode
       return '<span style="font-size:10px;background:' + (enabled ? '#d4edda' : '#e9ecef') + ';color:' + (enabled ? '#155724' : '#6c757d') + ';border:1px solid ' + (enabled ? '#c3e6cb' : '#d6d8db') + ';padding:1px 7px;border-radius:8px;margin-left:8px;">' + label + '</span>';
     };
     var legendWindow = Ext.create('Ext.window.Window', {
-      cls: 'iux-product-window',
+      cls: 'iux-product-window iux-popup-window',
       title: '<i class="fa fa-info-circle" style="margin-right:8px;"></i><b style="color:white;">System Legend</b>',
-      width: 700,
-      height: 560,
+      width: getIuxPopupSize(700, 560).width,
+      height: getIuxPopupSize(700, 560).height,
       modal: true,
+      constrain: true,
+      constrainHeader: true,
       scrollable: true,
       bodyPadding: 15,
       header: { style: { 'background-color': '#383838', 'color': '#ffffff' } },
@@ -3887,6 +4091,7 @@ gantt.config.timeline = true;           // enable timeline mode
       buttonAlign: 'center'
     });
     legendWindow.show();
+    applyIuxPopupViewport(legendWindow, { closeOnMaskClick: true });
   }
 
   function getTaskScheduleStartDate(task) {
@@ -3932,7 +4137,7 @@ gantt.config.timeline = true;           // enable timeline mode
     var date = analyticsDate(dateKey);
     if (!date) return;
     var rows = getVisibleScheduledWorkOrdersForDate(dateKey);
-    var displayDate = formatDateDMY(date);
+    var displayDate = formatDisplayDate(date);
     var html = '<div class="iux-day-schedule-popup">' +
       '<div class="iux-day-schedule-hero">' +
         '<div><div class="iux-day-schedule-title">' + safeHtml(displayDate) + '</div>' +
@@ -3953,8 +4158,8 @@ gantt.config.timeline = true;           // enable timeline mode
           '<td>' + safeHtml(task.EVT_STATUS_DESC || task.EVT_STATUS || '-') + '</td>' +
           '<td>' + safeHtml(task.EVT_JOBTYPE_DESC || task.EVT_JOBTYPE || '-') + '</td>' +
           '<td>' + safeHtml(task.EVT_ORG || '-') + '</td>' +
-          '<td>' + safeHtml(start ? formatDateDMY(start) : '-') + '</td>' +
-          '<td>' + safeHtml(end ? formatDateDMY(end) : '-') + '</td>' +
+          '<td>' + safeHtml(start ? formatDisplayDate(start) : '-') + '</td>' +
+          '<td>' + safeHtml(end ? formatDisplayDate(end) : '-') + '</td>' +
           '<td>' + safeHtml(task.ACT_EST || '-') + '</td>' +
         '</tr>';
       });
@@ -3966,11 +4171,13 @@ gantt.config.timeline = true;           // enable timeline mode
     if (Ext.getCmp('iuxDayScheduleWin')) Ext.getCmp('iuxDayScheduleWin').destroy();
     var win = Ext.create('Ext.window.Window', {
       id: 'iuxDayScheduleWin',
-      cls: 'iux-product-window',
+      cls: 'iux-product-window iux-popup-window',
       title: '<i class="fa fa-calendar" style="margin-right:8px;"></i><b style="color:white;">Scheduled Work Orders - ' + safeHtml(displayDate) + '</b>',
-      width: 920,
-      height: 520,
+      width: getIuxPopupSize(920, 520).width,
+      height: getIuxPopupSize(920, 520).height,
       modal: true,
+      constrain: true,
+      constrainHeader: true,
       scrollable: true,
       bodyPadding: 0,
       html: html,
@@ -3999,6 +4206,7 @@ gantt.config.timeline = true;           // enable timeline mode
       }
     });
     win.show();
+    applyIuxPopupViewport(win, { closeOnMaskClick: true });
   }
 
   function showConfigPopup() {
@@ -4087,11 +4295,13 @@ gantt.config.timeline = true;           // enable timeline mode
 
     var configWin = Ext.create('Ext.window.Window', {
       id: 'ganttConfigWin',
-      cls: 'iux-product-window',
+      cls: 'iux-product-window iux-popup-window',
       title: '<i class="fa fa-cog" style="margin-right:8px;"></i><b style="color:white;">Configuration</b>',
-      width: 460,
-      height: 640,
+      width: getIuxPopupSize(460, 640).width,
+      height: getIuxPopupSize(460, 640).height,
       modal: true,
+      constrain: true,
+      constrainHeader: true,
       resizable: false,
       scrollable: true,
       bodyPadding: 0,
@@ -4143,6 +4353,7 @@ gantt.config.timeline = true;           // enable timeline mode
       buttonAlign: 'right'
     });
     configWin.show();
+    applyIuxPopupViewport(configWin);
   }
 
   // ==========================================================================
@@ -4161,14 +4372,17 @@ gantt.config.timeline = true;           // enable timeline mode
       var change = gGanttGlobal.PendingChanges[id];
       if (!change) return;
       var task = gantt.getTask(id);
-      var oldStart = change.oldStart ? formatDateDMY(change.oldStart) : '-';
-      var oldEnd   = change.oldEnd   ? formatDateDMY(change.oldEnd)   : '-';
-      var newStart = change.newStart ? formatDateDMY(change.newStart) : '-';
-      var adjustedEnd = change.newEnd ? new Date(change.newEnd.getTime() - 1) : null;
-      var newEnd = adjustedEnd ? formatDateDMY(adjustedEnd) : '-';
-      var oldDays = (change.oldStart && change.oldEnd) ? getInclusiveCalendarDayCount(change.oldStart, change.oldEnd) : '-';
-      var newDays = (change.newStart && adjustedEnd) ? getInclusiveCalendarDayCount(change.newStart, adjustedEnd) : '-';
-      var moveDays = (change.oldStart && change.newStart) ? getCalendarDayDiff(change.oldStart, change.newStart) : 0;
+      var oldStartDate = getCalendarDateOnly(change.oldStart);
+      var oldEndDate = getCalendarDateOnly(change.oldEnd);
+      var newStartDate = getCalendarDateOnly(change.newStart);
+      var newEndDate = getCalendarDateOnly(change.newEnd);
+      var oldStart = oldStartDate ? formatDisplayDate(oldStartDate) : '-';
+      var oldEnd   = oldEndDate   ? formatDisplayDate(oldEndDate)   : '-';
+      var newStart = newStartDate ? formatDisplayDate(newStartDate) : '-';
+      var newEnd = newEndDate ? formatDisplayDate(newEndDate) : '-';
+      var oldDays = (oldStartDate && oldEndDate) ? getInclusiveCalendarDayCount(oldStartDate, oldEndDate) : '-';
+      var newDays = (newStartDate && newEndDate) ? getInclusiveCalendarDayCount(newStartDate, newEndDate) : '-';
+      var moveDays = (oldStartDate && newStartDate) ? getCalendarDayDiff(oldStartDate, newStartDate) : 0;
       var durationDelta = (oldDays !== '-' && newDays !== '-') ? (newDays - oldDays) : 0;
       var moveText = moveDays === 0 ? 'No date movement' : ('Moved ' + (moveDays > 0 ? '+' : '') + moveDays + ' day(s)');
       var durationText = durationDelta === 0 ? '' : ', Duration ' + (durationDelta > 0 ? '+' : '') + durationDelta + ' day(s)';
@@ -4224,11 +4438,13 @@ gantt.config.timeline = true;           // enable timeline mode
 
     var reviewWin = Ext.create('Ext.window.Window', {
       id: 'ganttReviewWin',
-      cls: 'iux-product-window',
+      cls: 'iux-product-window iux-popup-window',
       title: '<i class="fa fa-list-alt" style="margin-right:8px;"></i><b style="color:white;">Review Pending Changes (' + gGanttGlobal.TasksModified.length + ')</b>',
-      width: 920,
-      height: 540,
+      width: getIuxPopupSize(920, 540).width,
+      height: getIuxPopupSize(920, 540).height,
       modal: true,
+      constrain: true,
+      constrainHeader: true,
       scrollable: true,
       bodyPadding: 0,
       header: {
@@ -4293,6 +4509,7 @@ gantt.config.timeline = true;           // enable timeline mode
       buttonAlign: 'right'
     });
     reviewWin.show();
+    applyIuxPopupViewport(reviewWin);
   }
 
   function updateReviewPendingPopupCount() {
@@ -4501,8 +4718,9 @@ gantt.config.timeline = true;           // enable timeline mode
                 if (taskValue) {
                     // Simple date string comparison - you may need to adjust this based on your date format
                     var taskDateStr = '';
-                    if (taskValue instanceof Date) {
-                        taskDateStr = taskValue.toLocaleDateString();
+                    var parsedTaskDate = parseGanttDateValue(taskValue);
+                    if (parsedTaskDate && !isNaN(parsedTaskDate.getTime())) {
+                        taskDateStr = formatDisplayDate(parsedTaskDate);
                     } else {
                         taskDateStr = String(taskValue);
                     }
@@ -4591,14 +4809,16 @@ function getHeaderWorkOrderMetrics() {
 
     if (Ext.getCmp('ganttEstimatedHoursByTradeWin')) Ext.getCmp('ganttEstimatedHoursByTradeWin').destroy();
 
-    var viewportSize = Ext.getBody().getViewSize();
-    Ext.create('Ext.window.Window', {
+    var viewportSize = getIuxViewportSize();
+    var estimatedHoursWin = Ext.create('Ext.window.Window', {
       id: 'ganttEstimatedHoursByTradeWin',
-      cls: 'iux-product-window',
+      cls: 'iux-product-window iux-popup-window',
       title: '<i class="fa fa-clock-o" style="margin-right:8px;"></i><b style="color:white;">Estimated Hours by Trade</b>',
       width: Math.min(620, Math.floor(viewportSize.width * 0.72)),
       height: Math.min(520, Math.floor(viewportSize.height * 0.72)),
       modal: true,
+      constrain: true,
+      constrainHeader: true,
       bodyPadding: 0,
       scrollable: true,
       html: bodyHtml,
@@ -4608,7 +4828,9 @@ function getHeaderWorkOrderMetrics() {
         handler: function(btn) { btn.up('window').close(); }
       }],
       buttonAlign: 'right'
-    }).show();
+    });
+    estimatedHoursWin.show();
+    applyIuxPopupViewport(estimatedHoursWin, { closeOnMaskClick: true });
   }
 
   // ==========================================================================
@@ -4626,7 +4848,7 @@ function getHeaderWorkOrderMetrics() {
         name: "IUXHUB_Gantt.xlsx",
         visual: "base-colors",
         cellColors: true,
-        date_format: "dd-mm-yyyy",
+        date_format: getExportDateFormat(),
         columns: getCleanExcelExportColumns()
       });
     } catch (e) {
@@ -4649,6 +4871,11 @@ function getHeaderWorkOrderMetrics() {
 
       if (column && column.dataType === "date") {
         exportColumn.type = "date";
+        exportColumn.template = (function(name) {
+          return function(task) {
+            return formatDisplayDate(task && task[name]);
+          };
+        })(fieldName);
       }
 
       return exportColumn;
@@ -4683,17 +4910,18 @@ function getHeaderWorkOrderMetrics() {
     var report = buildGanttAnalytics(selectedOrg);
     gGanttGlobal.AnalyticsCache = report;
     var html = renderAnalyticsHtml(report);
-    var viewportSize = Ext.getBody().getViewSize();
 
     if (Ext.getCmp('ganttAnalyticsWin')) Ext.getCmp('ganttAnalyticsWin').destroy();
 
     var win = Ext.create('Ext.window.Window', {
       id: 'ganttAnalyticsWin',
-      cls: 'iux-product-window',
+      cls: 'iux-product-window iux-popup-window',
       title: '<i class="fa fa-line-chart" style="margin-right:8px;"></i><b style="color:white;">Planning Analytics</b>',
-      width: Math.max(980, Math.floor(viewportSize.width * 0.8)),
-      height: Math.min(720, Math.floor(viewportSize.height * 0.86)),
+      width: getIuxPopupSize(1180, 720).width,
+      height: getIuxPopupSize(1180, 720).height,
       modal: true,
+      constrain: true,
+      constrainHeader: true,
       bodyPadding: 0,
       scrollable: true,
       html: html,
@@ -4719,6 +4947,7 @@ function getHeaderWorkOrderMetrics() {
       }
     });
     win.show();
+    applyIuxPopupViewport(win, { closeOnMaskClick: true });
   }
 
   function buildGanttAnalytics(selectedOrg) {
@@ -4771,14 +5000,15 @@ function getHeaderWorkOrderMetrics() {
 
       analyticsEachDay(start, end, function(day) {
         var dateKey = analyticsDateKey(day);
+        var displayDate = formatDisplayDate(day);
         if (day.getDay() === 0 || day.getDay() === 6) {
-          nonWorkingDates.push(dateKey + ' Weekend');
+          nonWorkingDates.push(displayDate + ' Weekend');
         } else if (isUSHoliday(day)) {
-          nonWorkingDates.push(dateKey + ' US Holiday');
+          nonWorkingDates.push(displayDate + ' US Holiday');
         } else if (isOrganizationHoliday(day)) {
-          nonWorkingDates.push(dateKey + ' Organization Holiday');
+          nonWorkingDates.push(displayDate + ' Organization Holiday');
         } else if (isOrganizationSpecialDay(day)) {
-          nonWorkingDates.push(dateKey + ' Organization Special Day');
+          nonWorkingDates.push(displayDate + ' Organization Special Day');
         }
 
         if (!person) {
@@ -5021,7 +5251,7 @@ function getHeaderWorkOrderMetrics() {
     })), report.missingInfo.length ? report.missingInfoCount + ' work order(s), ' + report.missingInfoPct + '% of total, need data cleanup.' : 'No missing trade or estimated hour issues found.');
 
     html += analyticsSection('Employees Scheduled Over Threshold per Day', 'employee_scheduled_over_8', analyticsTable('employee_scheduled_over_8', ['Date', 'Employee', 'Assigned Hours', 'Over Threshold', 'Assigned WOs', 'Shift', 'Trade'], report.overScheduledRows.slice(0, maxRows).map(function(r) {
-      return [r.date, r.employee, analyticsHours(r.hours) + 'h', analyticsHours(r.overThreshold) + 'h', r.workOrderCount, r.shiftList, r.tradeList];
+      return [formatDisplayDate(r.date), r.employee, analyticsHours(r.hours) + 'h', analyticsHours(r.overThreshold) + 'h', r.workOrderCount, r.shiftList, r.tradeList];
     })), report.overScheduledRows.length ? report.overScheduledCount + ' employee/day row(s) are scheduled above ' + analyticsHours(report.overloadThreshold) + ' hours.' : 'No employee is scheduled above ' + analyticsHours(report.overloadThreshold) + ' hours per day.');
     html += '</div>';
 
@@ -5115,7 +5345,7 @@ function getHeaderWorkOrderMetrics() {
       return total + analyticsNumber(row.hours);
     }, 0);
     var table = analyticsTable('unassigned_trade_date_distribution', ['Date', 'Unassigned Hours', 'Unassigned WOs', '% Unassigned Hours'], rows.map(function(row) {
-      return [row.date, analyticsHours(row.hours) + 'h', row.workOrderCount, analyticsPct(row.hours, totalTradeHours) + '%'];
+      return [formatDisplayDate(row.date), analyticsHours(row.hours) + 'h', row.workOrderCount, analyticsPct(row.hours, totalTradeHours) + '%'];
     }));
     var html = '<div class="iux-analytics">' +
       '<div class="iux-analytics-header"><div><div class="iux-analytics-title">' + analyticsEscape(trade) + ' - Date Distribution</div>' +
@@ -5124,13 +5354,15 @@ function getHeaderWorkOrderMetrics() {
     '</div>';
 
     if (Ext.getCmp('ganttAnalyticsTradeWin')) Ext.getCmp('ganttAnalyticsTradeWin').destroy();
-    Ext.create('Ext.window.Window', {
+    var tradeWin = Ext.create('Ext.window.Window', {
       id: 'ganttAnalyticsTradeWin',
-      cls: 'iux-product-window',
+      cls: 'iux-product-window iux-popup-window',
       title: '<i class="fa fa-table" style="margin-right:8px;"></i><b style="color:white;">Unassigned Trade Date Distribution</b>',
-      width: 620,
-      height: 460,
+      width: getIuxPopupSize(620, 460).width,
+      height: getIuxPopupSize(620, 460).height,
       modal: true,
+      constrain: true,
+      constrainHeader: true,
       bodyPadding: 0,
       scrollable: true,
       html: html,
@@ -5139,7 +5371,9 @@ function getHeaderWorkOrderMetrics() {
         text: 'Close',
         handler: function(btn) { btn.up('window').close(); }
       }]
-    }).show();
+    });
+    tradeWin.show();
+    applyIuxPopupViewport(tradeWin, { closeOnMaskClick: true });
   }
 
   function analyticsInfoButton(helpKey) {
@@ -5234,7 +5468,10 @@ function getHeaderWorkOrderMetrics() {
     if (value instanceof Date) return new Date(value.getFullYear(), value.getMonth(), value.getDate());
     var text = String(value);
     var d;
-    if (/^\d{2}-\d{2}-\d{4}$/.test(text)) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+      var parts = text.split('-');
+      d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    } else if (/^\d{2}-\d{2}-\d{4}$/.test(text)) {
       var parts = text.split('-');
       d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
     } else {
@@ -5446,11 +5683,13 @@ function getHeaderWorkOrderMetrics() {
     if (Ext.getCmp('ganttSummaryWin')) Ext.getCmp('ganttSummaryWin').destroy();
     var win = Ext.create('Ext.window.Window', {
       id: 'ganttSummaryWin',
-      cls: 'iux-product-window',
+      cls: 'iux-product-window iux-popup-window',
       title: '<i class="fa fa-chart-pie" style="margin-right:8px;"></i><b style="color:white;">Work Order Summary</b>',
-      width: 520,
-      height: 560,
+      width: getIuxPopupSize(520, 560).width,
+      height: getIuxPopupSize(520, 560).height,
       modal: true,
+      constrain: true,
+      constrainHeader: true,
       bodyPadding: 0,
       scrollable: true,
       html: html,
@@ -5478,6 +5717,7 @@ function getHeaderWorkOrderMetrics() {
       }
     });
     win.show();
+    applyIuxPopupViewport(win, { closeOnMaskClick: true });
   }
 
   function applySummaryFilter(type, key) {
@@ -5676,8 +5916,9 @@ function getHeaderWorkOrderMetrics() {
                 var taskValue = task[columnName];
                 if (taskValue) {
                     var taskDateStr = '';
-                    if (taskValue instanceof Date) {
-                        taskDateStr = taskValue.toLocaleDateString();
+                    var parsedTaskDate = parseGanttDateValue(taskValue);
+                    if (parsedTaskDate && !isNaN(parsedTaskDate.getTime())) {
+                        taskDateStr = formatDisplayDate(parsedTaskDate);
                     } else {
                         taskDateStr = String(taskValue);
                     }

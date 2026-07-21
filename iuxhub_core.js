@@ -195,7 +195,8 @@
       taskTextMode: "DESCRIPTION",
       readonlyStatuses: ["FWD", "FWP", "FWM"],
       rowDensity: "COMFORTABLE",
-      taskBarMinWidth: 0
+      taskBarMinWidth: 0,
+      displayDateFormat: "dd-mm-yyyy"
     };
   }
 
@@ -236,6 +237,11 @@
     if (isNaN(taskBarMinWidth)) taskBarMinWidth = defaults.taskBarMinWidth;
     taskBarMinWidth = Math.max(0, Math.min(160, taskBarMinWidth));
 
+    var displayDateFormat = String(experience.displayDateFormat || defaults.displayDateFormat).toLowerCase();
+    if (["dd-mm-yyyy", "mm/dd/yyyy", "yyyy-mm-dd", "dd-mmm-yy", "dd mmm yyyy"].indexOf(displayDateFormat) === -1) {
+      displayDateFormat = defaults.displayDateFormat;
+    }
+
     return {
       gridWidthPercent: gridWidthPercent,
       tooltipDelayMs: tooltipDelayMs,
@@ -245,7 +251,8 @@
       taskTextMode: taskTextMode,
       readonlyStatuses: readonlyStatuses,
       rowDensity: rowDensity,
-      taskBarMinWidth: taskBarMinWidth
+      taskBarMinWidth: taskBarMinWidth,
+      displayDateFormat: displayDateFormat
     };
   }
 

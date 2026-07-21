@@ -75,6 +75,7 @@
       return {
         'ewsusr listonly[tabName=LST]': {
           afterrender: function (a, b, c, d) {
+            me.bindIuxhubDestroyCleanup(a);
             EAM.Utils.getMainToolbar().getEl().hide();
             EAM.Utils.getMainToolbar().setHeight("1");
             if (EAM.Utils.getScreen().userFunction == 'IUXHUB' && Ext.ComponentQuery.query('uxtabpanel')[0]) {
@@ -122,6 +123,7 @@
                 //node.style.top = '0px';
                 //node.style.position = 'absolute';
                 reference.appendChild(node);
+                me.bindIuxhubTooltipCleanup(node);
 
                 me.destroyExistingComponents();
                 me.initalizeStores();
@@ -144,6 +146,12 @@
                 console.log(e);
               }
             }
+          },
+          beforedestroy: function () {
+            me.clearFloatingTooltipsAfterNavigation();
+          },
+          destroy: function () {
+            me.clearFloatingTooltipsAfterNavigation();
           }
         }
       }
@@ -386,15 +394,22 @@
         }
 
         if (obj.cfg_type.startsWith('DSELECT')) {
+          var dateColumnName = obj.cfg_code.toUpperCase();
 
           gGanttGlobal.ListColumnsStore.push({
-            name: obj.cfg_code.toUpperCase(),
+            name: dateColumnName,
             id: obj.cfg_code.toLowerCase(),
             label: obj.cfg_value,
             width: '100',
             resize: true,
-        dataType : "date",
-            date_format: "%Y-%m-%d"
+            dataType : "date",
+            date_format: "%Y-%m-%d",
+            template: (function(columnName) {
+              return function(task) {
+                var value = task ? task[columnName] : "";
+                return window.IUXHUB_FORMAT_DISPLAY_DATE ? window.IUXHUB_FORMAT_DISPLAY_DATE(value) : value;
+              };
+            })(dateColumnName)
           });
 
         }
@@ -443,7 +458,139 @@
       // DHTML/CSS dependencies are loaded once by the bootstrap dependency table.
     },
 
+    bindIuxhubDestroyCleanup: function (cmp) {
+      if (!cmp || !cmp.on || cmp.iuxhubDestroyCleanupBound) return;
+      cmp.iuxhubDestroyCleanupBound = true;
+      cmp.on({
+        scope: this,
+        beforedestroy: this.clearFloatingTooltipsAfterNavigation,
+        destroy: function () {
+          this.clearFloatingTooltipsAfterNavigation();
+        }
+      });
+    },
+
+    bindIuxhubTooltipCleanup: function (host) {
+      var me = this;
+      if (host && !host.iuxhubTooltipCleanupBound) {
+        host.iuxhubTooltipCleanupBound = true;
+        host.addEventListener("mouseleave", function () {
+          me.clearFloatingTooltipsAfterNavigation();
+        });
+        host.addEventListener("mouseout", function (event) {
+          if (!event.relatedTarget || !host.contains(event.relatedTarget)) {
+            me.clearFloatingTooltipsAfterNavigation();
+          }
+        });
+      }
+
+      if (!window.IUXHUB_TOOLTIP_GLOBAL_CLEANUP_BOUND) {
+        window.IUXHUB_TOOLTIP_GLOBAL_CLEANUP_BOUND = true;
+
+        var clearWhenOutsideIuxhub = function (event) {
+          var currentHost = document.getElementById("expertshub");
+          if (currentHost) {
+            if (!event || !event.target || !currentHost.contains(event.target)) {
+              me.clearFloatingTooltipsAfterNavigation();
+            }
+          } else if (me.hasIuxhubFloatingTooltip()) {
+            me.clearFloatingTooltipsAfterNavigation();
+          }
+        };
+
+        document.addEventListener("mousedown", clearWhenOutsideIuxhub, true);
+        document.addEventListener("focusin", clearWhenOutsideIuxhub, true);
+        document.addEventListener("wheel", clearWhenOutsideIuxhub, true);
+        document.addEventListener("keydown", function () {
+          if (document.getElementById("expertshub") || me.hasIuxhubFloatingTooltip()) {
+            me.clearFloatingTooltipsAfterNavigation();
+          }
+        }, true);
+        document.addEventListener("visibilitychange", function () {
+          if (document.hidden) me.clearFloatingTooltipsAfterNavigation();
+        });
+      }
+
+      if (window.MutationObserver && !window.IUXHUB_TOOLTIP_NAV_OBSERVER) {
+        window.IUXHUB_TOOLTIP_NAV_OBSERVER = new MutationObserver(function () {
+          var currentHost = document.getElementById("expertshub");
+          var screen = null;
+          try {
+            screen = EAM && EAM.Utils && EAM.Utils.getScreen ? EAM.Utils.getScreen() : null;
+          } catch (e) {}
+          if ((!currentHost || (screen && screen.userFunction && screen.userFunction !== "IUXHUB")) && me.hasIuxhubFloatingTooltip()) {
+            me.clearFloatingTooltipsAfterNavigation();
+          }
+        });
+        window.IUXHUB_TOOLTIP_NAV_OBSERVER.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ["class", "style"]
+        });
+      }
+    },
+
+    hasIuxhubFloatingTooltip: function () {
+      try {
+        return !!document.querySelector(".gantt_tooltip, .dhtmlx_tooltip, .dhtmlXTooltip, .iux-task-tooltip");
+      } catch (e) {
+        return false;
+      }
+    },
+
+    clearFloatingTooltipsAfterNavigation: function () {
+      var me = this;
+      this.clearFloatingTooltips();
+      [50, 150, 350, 700].forEach(function (delay) {
+        Ext.defer(function () {
+          me.clearFloatingTooltips();
+        }, delay);
+      });
+    },
+
+    clearFloatingTooltips: function () {
+      try {
+        if (typeof gantt !== "undefined" && gantt.ext && gantt.ext.tooltips && gantt.ext.tooltips.tooltip && gantt.ext.tooltips.tooltip.hide) {
+          gantt.ext.tooltips.tooltip.hide();
+        }
+      } catch (e) {}
+
+      try {
+        if (Ext && Ext.tip && Ext.tip.QuickTipManager && Ext.tip.QuickTipManager.getQuickTip) {
+          var quickTip = Ext.tip.QuickTipManager.getQuickTip();
+          if (quickTip && quickTip.hide) quickTip.hide();
+        }
+      } catch (e) {}
+
+      try {
+        Ext.getBody().select(".gantt_tooltip, .dhtmlx_tooltip, .dhtmlXTooltip").remove();
+        Ext.getBody().select(".iux-task-tooltip").each(function (tip) {
+          var dom = tip.dom;
+          var container = dom && dom.closest ? dom.closest(".gantt_tooltip, .dhtmlx_tooltip, .dhtmlXTooltip, .x-tip") : null;
+          if (container && container.parentNode) {
+            container.parentNode.removeChild(container);
+          } else if (dom && dom.parentNode) {
+            dom.parentNode.removeChild(dom);
+          }
+        });
+      } catch (e) {
+        try {
+          var tooltipNodes = document.querySelectorAll(".gantt_tooltip, .dhtmlx_tooltip, .dhtmlXTooltip, .iux-task-tooltip");
+          for (var i = 0; i < tooltipNodes.length; i++) {
+            var tooltipNode = tooltipNodes[i];
+            var containerNode = tooltipNode && tooltipNode.classList && tooltipNode.classList.contains("iux-task-tooltip") && tooltipNode.closest
+              ? tooltipNode.closest(".gantt_tooltip, .dhtmlx_tooltip, .dhtmlXTooltip, .x-tip")
+              : tooltipNode;
+            if (containerNode && containerNode.parentNode) containerNode.parentNode.removeChild(containerNode);
+          }
+        } catch (ignore) {}
+      }
+    },
+
     destroyExistingComponents: function () {
+
+      this.clearFloatingTooltips();
 
       var componentToDestroy = ["GanttToolBar","searchgantt", "StartDate", "lookahead", "viewscale", "viewscale_prev", "viewscale_label", "viewscale_next", "ShowExpired", "workorderstatus", "workordertype", "department", "organization", "dataspycomp", "resetFiltersButton", "reloadGanttNow", "submitGanttNow", "summaryButton", "summaryFilterIndicator", "bulkEditSwitch", "exportExcelButton"];
       var comp;
@@ -462,7 +609,7 @@
       });
 
       var myDiv = document.getElementById("my_gantt_toolbar");
-      myDiv.innerHTML = "";
+      if (myDiv) myDiv.innerHTML = "";
 
     },
 
@@ -649,6 +796,7 @@
             fieldLabel: 'From Date',
             id: 'StartDate',
             value: getDefaultStartDate(),
+            format: getExtDisplayDateFormat(),
             margin: '0 6 5 0',
             listeners: {
               change: function () {
@@ -759,6 +907,20 @@
               '<li role="option" class="x-boundlist-item gantt_font_size" style="font-size:80%;"><b>{code}</b> - {description}</li>',
               '</tpl></ul>'),
             listeners: {
+              beforequery: function(queryPlan) {
+                var combo = queryPlan.combo;
+                var query = String(queryPlan.query || '').toUpperCase();
+                combo.getStore().clearFilter();
+                if (query) {
+                  combo.getStore().filterBy(function(record) {
+                    var code = String(record.get('code') || '').toUpperCase();
+                    var description = String(record.get('description') || '').toUpperCase();
+                    return code.indexOf(query) !== -1 || description.indexOf(query) !== -1;
+                  });
+                }
+                combo.expand();
+                return false;
+              },
               change: function () {
                 Ext.getCmp("reloadGanttNow").addCls('highlight-button');
               }

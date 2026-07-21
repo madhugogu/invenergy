@@ -132,7 +132,7 @@ class DateFilter extends ColumnFilter {
 		popup.style.top = `${rect.bottom}px`;
 
 
-		popup.querySelector(".date-filter-input").value = this.value;
+		popup.querySelector(".date-filter-input").value = DateFilter.toInputValue(this.value);
 		popup.querySelector(".date-filter-select").value = this.condition;
 
 		popup.querySelector(".date-filter-apply").onclick = () => {
@@ -169,10 +169,14 @@ class DateFilter extends ColumnFilter {
 		this.notify();
 	}
 
-	// Parse dates as local calendar days. The grid displays dd-mm-yyyy values,
-	// while the native date input supplies yyyy-mm-dd; Date.parse is unreliable
-	// for the former and treats the latter as UTC in many browsers.
+	// Parse dates as local calendar days. The visible filter value follows the
+	// configured display format, while task data may still use internal formats.
 	static parseDate(value) {
+		if (window.IUXHUB_PARSE_DISPLAY_DATE) {
+			const displayDate = window.IUXHUB_PARSE_DISPLAY_DATE(value);
+			if (displayDate) return displayDate;
+		}
+
 		if (value instanceof Date) {
 			if (isNaN(value.getTime())) return null;
 			return new Date(value.getFullYear(), value.getMonth(), value.getDate());
@@ -201,6 +205,14 @@ class DateFilter extends ColumnFilter {
 		return parsed;
 	}
 
+	static toInputValue(value) {
+		const parsed = DateFilter.parseDate(value);
+		if (!parsed) return "";
+		const month = parsed.getMonth() + 1;
+		const day = parsed.getDate();
+		return parsed.getFullYear() + "-" + (month < 10 ? "0" : "") + month + "-" + (day < 10 ? "0" : "") + day;
+	}
+
 
 	_filterHeaderContent() {
 		let displayValue = "";
@@ -213,7 +225,9 @@ class DateFilter extends ColumnFilter {
 				case 'after': sign = "&gt;"; break;
 				default: sign = "=";
 			}
-			displayValue = `${sign} ${this.value}`;
+			const parsedValue = DateFilter.parseDate(this.value);
+			const formattedValue = parsedValue && window.IUXHUB_FORMAT_DISPLAY_DATE ? window.IUXHUB_FORMAT_DISPLAY_DATE(parsedValue) : this.value;
+			displayValue = `${sign} ${formattedValue}`;
 		} else {
 			displayValue = "Click to Filter"
 		}
