@@ -106,6 +106,8 @@
   
 }
 
+#gantt_here .gantt_grid_head_cell .gantt_sort { transform: rotate(180deg); }
+
 
 
 .filter-input{

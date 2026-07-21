@@ -559,7 +559,12 @@
       try {
         if (Ext && Ext.tip && Ext.tip.QuickTipManager && Ext.tip.QuickTipManager.getQuickTip) {
           var quickTip = Ext.tip.QuickTipManager.getQuickTip();
-          if (quickTip && quickTip.hide) quickTip.hide();
+          if (quickTip) {
+            if (quickTip.clearTimers) quickTip.clearTimers();
+            else if (quickTip.clearTimer) quickTip.clearTimer("show");
+            quickTip.activeTarget = null;
+            if (quickTip.hide) quickTip.hide();
+          }
         }
       } catch (e) {}
 
