@@ -1107,7 +1107,7 @@
             handler: function() { exportGanttToExcel(); }
           }
         ],
-        overflowHandler: 'menu'
+        overflowHandler: 'none'
       });
 
   // Function to enhance filter inputs with Enter key and button

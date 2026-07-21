@@ -208,8 +208,15 @@
 
 #my_gantt_toolbar {
   box-sizing: border-box;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   padding-top: 0;
+}
+
+#my_gantt_toolbar #GanttToolBar,
+#my_gantt_toolbar #GanttToolBar-innerCt,
+#my_gantt_toolbar #GanttToolBar-targetEl {
+  min-width: 1500px !important;
 }
 
 #my_gantt_toolbar .x-toolbar {
@@ -218,7 +225,7 @@
   
 
 #my_gantt_toolbar [id^="button-"]:not([id$="-btnInnerEl"]):not([id$="-btnIconEl"]):not([id$="-btnEl"]):not([id$="-btnWrap"]),
-#reloadGanttNow, #submitGanttNow, #resetFiltersButton,
+#reloadGanttNow, #submitGanttNow, #resetFiltersButton, #exportExcelButton,
 #my_gantt_toolbar #GanttToolBar-menu-trigger {
 border: 1px solid #000000; 
 border-radius: 5px;
@@ -227,7 +234,7 @@ border-radius: 5px;
 
 
 #my_gantt_toolbar [id^="button-"],
-#reloadGanttNow, #submitGanttNow, #resetFiltersButton,
+#reloadGanttNow, #submitGanttNow, #resetFiltersButton, #exportExcelButton,
 #my_gantt_toolbar #GanttToolBar-menu-trigger {
   color: white;
   background-color: #368ac0;
@@ -235,13 +242,14 @@ border-radius: 5px;
 
 #my_gantt_toolbar #submitGanttNow-btnInnerEl ,
 #my_gantt_toolbar #reloadGanttNow-btnInnerEl,
-#my_gantt_toolbar #resetFiltersButton-btnInnerEl {
+#my_gantt_toolbar #resetFiltersButton-btnInnerEl,
+#my_gantt_toolbar #exportExcelButton-btnInnerEl {
   color: white; 
 }
 
 
 #my_gantt_toolbar [id^="button-"]:hover,
-#reloadGanttNow:hover, #submitGanttNow:hover, #resetFiltersButton:hover {
+#reloadGanttNow:hover, #submitGanttNow:hover, #resetFiltersButton:hover, #exportExcelButton:hover {
 background-color: #03462e;
 
 border-radius: 5px;
@@ -258,7 +266,8 @@ background-color: inherit;
 #my_gantt_toolbar [id^="button-"]:hover [id$="-btnInnerEl"],
 #my_gantt_toolbar #submitGanttNow:hover [id$="-btnInnerEl"],
 #my_gantt_toolbar #reloadGanttNow:hover [id$="-btnInnerEl"],
-#my_gantt_toolbar #resetFiltersButton:hover [id$="-btnInnerEl"] {
+#my_gantt_toolbar #resetFiltersButton:hover [id$="-btnInnerEl"],
+#my_gantt_toolbar #exportExcelButton:hover [id$="-btnInnerEl"] {
   color: white; 
 }
 
