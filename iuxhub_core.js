@@ -22,6 +22,7 @@
   gGanttGlobal.PendingChanges = {};
   gGanttGlobal.BulkEditSelected = {};
   gGanttGlobal.suppressChangeTracking = false;
+  gGanttGlobal.SessionGridWidthOverride = null;
   gGanttGlobal.featureFlags = {};
   gGanttGlobal.ganttConfig = { highlightWeekends: false, highlightOrgHolidays: false, highlightNationalHolidays: false,
       highlightDueDates: false, highlightDueDateFlags: false, highlightShutdownDates: false, bulkEditEnabled: false };

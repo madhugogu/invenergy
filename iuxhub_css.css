@@ -19,6 +19,67 @@
   background-color : #F0F0F0;
 }
 
+#gantt_here .iux-grid-timeline-separator,
+#gantt_here .iux-grid-timeline-separator-spacer {
+  background: #111827 !important;
+  box-sizing: border-box;
+  border: 0 !important;
+  box-shadow: none !important;
+  flex: 0 0 2px !important;
+  margin: 0 !important;
+  max-width: 2px !important;
+  min-width: 2px !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  width: 2px !important;
+}
+
+#gantt_here .iux-grid-timeline-separator {
+  cursor: col-resize;
+}
+
+#gantt_here .iux-grid-timeline-separator *,
+#gantt_here .iux-grid-timeline-separator-spacer * {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+#gantt_here .iux-grid-timeline-separator::before,
+#gantt_here .iux-grid-timeline-separator::after,
+#gantt_here .iux-grid-timeline-separator-spacer::before,
+#gantt_here .iux-grid-timeline-separator-spacer::after,
+#gantt_here .gantt_resizer_x.iux-grid-timeline-separator::before,
+#gantt_here .gantt_resizer_x.iux-grid-timeline-separator::after,
+#gantt_here .iux-grid-timeline-separator .gantt_resizer_x::before,
+#gantt_here .iux-grid-timeline-separator .gantt_resizer_x::after,
+#gantt_here .iux-grid-timeline-separator .gantt_resizer::before,
+#gantt_here .iux-grid-timeline-separator .gantt_resizer::after {
+  content: none !important;
+  display: none !important;
+}
+
+#gantt_here .iux-grid-timeline-separator:hover {
+  background: #111827 !important;
+}
+
+#gantt_here .gantt_grid,
+#gantt_here .gantt_grid_scale,
+#gantt_here .gantt_grid_data {
+  border-right: 0 !important;
+}
+
+#gantt_here .gantt_task,
+#gantt_here .gantt_task_scale,
+#gantt_here .gantt_task_data {
+  border-left: 0 !important;
+}
+
+#gantt_here .gantt_grid_data .gantt_row .gantt_cell:last-child,
+#gantt_here .gantt_grid_scale .gantt_grid_head_cell:last-child {
+  border-right: 0 !important;
+}
+
 .gantt_grid_data .gantt_row.gantt_selected, .gantt_grid_data .gantt_row.odd.gantt_selected, .gantt_task_row.gantt_selected {
     background-color: #DBF1F7;
     

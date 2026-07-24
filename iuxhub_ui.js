@@ -447,11 +447,57 @@
     };
   }
 
+  function getMinimumGanttGridWidth() {
+    return 360;
+  }
+
+  function getGanttGridTimelineSeparatorWidth() {
+    return 2;
+  }
+
+  function getMinimumGanttGridWidthForCurrentMode() {
+    return isFeatureEnabled('bulkEdit') && gGanttGlobal.ganttConfig.bulkEditEnabled
+      ? 546
+      : getMinimumGanttGridWidth();
+  }
+
+  function getGanttViewportWidth() {
+    return (gantt && gantt.$container && gantt.$container.clientWidth) || document.documentElement.clientWidth || 1200;
+  }
+
+  function normalizeSessionGridWidth(width) {
+    var parsedWidth = parseInt(width, 10);
+    if (isNaN(parsedWidth) || parsedWidth <= 0) return null;
+    var minWidth = getMinimumGanttGridWidth();
+    var viewportWidth = getGanttViewportWidth();
+    var maxWidth = Math.max(minWidth, viewportWidth - 180);
+    return Math.max(minWidth, Math.min(parsedWidth, maxWidth));
+  }
+
+  function getSessionGridWidthOverride() {
+    var width = normalizeSessionGridWidth(gGanttGlobal.SessionGridWidthOverride);
+    if (width === null) {
+      gGanttGlobal.SessionGridWidthOverride = null;
+      return null;
+    }
+    return width;
+  }
+
+  function setSessionGridWidthOverride(width) {
+    var normalizedWidth = normalizeSessionGridWidth(width);
+    if (normalizedWidth === null) return;
+    gGanttGlobal.SessionGridWidthOverride = normalizedWidth;
+  }
+
+  function getCurrentRenderedGridWidth() {
+    if (gantt && gantt.$grid && gantt.$grid.offsetWidth) return gantt.$grid.offsetWidth;
+    var gridEl = document.querySelector("#gantt_here .gantt_grid");
+    return gridEl && gridEl.offsetWidth ? gridEl.offsetWidth : null;
+  }
+
   function getGanttGridWidthForBulkMode() {
     var configuredWidth = getConfiguredGridWidth();
-    return isFeatureEnabled('bulkEdit') && gGanttGlobal.ganttConfig.bulkEditEnabled
-      ? Math.max(configuredWidth, 546)
-      : configuredWidth;
+    return Math.max(configuredWidth, getMinimumGanttGridWidthForCurrentMode());
   }
 
   function applyGanttGridWidthToLayout(layout, width) {
@@ -459,7 +505,7 @@
     if ((layout.view === "grid" || layout.view === "resourceGrid") ||
         (layout.rows && layout.rows[0] && (layout.rows[0].view === "grid" || layout.rows[0].view === "resourceGrid"))) {
       layout.width = width;
-      layout.min_width = width;
+      layout.min_width = getMinimumGanttGridWidthForCurrentMode();
     }
     if (layout.rows) {
       layout.rows.forEach(function(row) {
@@ -967,10 +1013,13 @@
   }
 
   function getConfiguredGridWidth() {
+    var sessionWidth = getSessionGridWidthOverride();
+    if (sessionWidth !== null) return sessionWidth;
+
     var experience = getConfiguredExperience();
-    var viewportWidth = (gantt && gantt.$container && gantt.$container.clientWidth) || document.documentElement.clientWidth || 1200;
+    var viewportWidth = getGanttViewportWidth();
     var percentWidth = Math.floor(viewportWidth * (experience.gridWidthPercent / 100));
-    return Math.max(360, Math.min(percentWidth, Math.floor(viewportWidth * 0.4)));
+    return Math.max(getMinimumGanttGridWidth(), Math.min(percentWidth, Math.floor(viewportWidth * 0.4)));
   }
 
   function getTaskCustomerSpecificDateKey(task) {
@@ -1589,6 +1638,8 @@
 
   function getMainGanttLayoutCols(includeHorizontalScrollbars) {
     if (includeHorizontalScrollbars !== false) includeHorizontalScrollbars = true;
+    var gridWidth = getGanttGridWidthForBulkMode();
+    var minGridWidth = getMinimumGanttGridWidthForCurrentMode();
     var gridRows = [{
       view: "grid",
       scrollX: "gridScroll",
@@ -1615,12 +1666,13 @@
     }
 
     return [{
-      width: getGanttGridWidthForBulkMode(),
-      min_width: getGanttGridWidthForBulkMode(),
+      width: gridWidth,
+      min_width: minGridWidth,
       rows: gridRows
     }, {
       resizer: true,
-      width: 1
+      css: "iux-grid-timeline-separator",
+      width: getGanttGridTimelineSeparatorWidth()
     }, {
       rows: timelineRows
     }, {
@@ -1631,12 +1683,13 @@
 
   function getResourcesGanttLayout() {
     var gridWidth = getGanttGridWidthForBulkMode();
+    var minGridWidth = getMinimumGanttGridWidthForCurrentMode();
     return {
       css: "gantt_container",
       rows: [{
         cols: [{
           width: gridWidth,
-          min_width: gridWidth,
+          min_width: minGridWidth,
           group: "grids",
           rows: [{
             view: "grid",
@@ -1646,7 +1699,8 @@
           }]
         }, {
           resizer: true,
-          width: 1
+          css: "iux-grid-timeline-separator",
+          width: getGanttGridTimelineSeparatorWidth()
         }, {
           rows: [{
             view: "timeline",
@@ -1666,7 +1720,7 @@
         config: getResourcePanelConfig(),
         cols: [{
           width: gridWidth,
-          min_width: gridWidth,
+          min_width: minGridWidth,
           group: "grids",
           rows: [{
             view: "resourceGrid",
@@ -1675,7 +1729,8 @@
           }]
         }, {
           resizer: true,
-          width: 1
+          css: "iux-grid-timeline-separator",
+          width: getGanttGridTimelineSeparatorWidth()
         }, {
           view: "resourceTimeline",
           scrollX: "scrollHor",
@@ -1689,7 +1744,7 @@
         height: 18,
         cols: [{
           width: gridWidth,
-          min_width: gridWidth,
+          min_width: minGridWidth,
           group: "grids",
           rows: [{
             view: "scrollbar",
@@ -1697,7 +1752,8 @@
             group: "horizontal"
           }]
         }, {
-          width: 1
+          css: "iux-grid-timeline-separator-spacer",
+          width: getGanttGridTimelineSeparatorWidth()
         }, {
           view: "scrollbar",
           id: "scrollHor",
@@ -1862,6 +1918,10 @@ gantt.config.timeline = true;           // enable timeline mode
       
       // Attach event handlers for grid resize (resizer between grid and timeline)
       gantt.attachEvent("onGridResizeEnd", function(old_width, new_width){
+        if (gGanttGlobal.GanttGridResizeInProgress) {
+          setSessionGridWidthOverride(new_width || getCurrentRenderedGridWidth());
+        }
+        gGanttGlobal.GanttGridResizeInProgress = false;
         console.log('Grid resize ended. Restoring filters...');
         // Use setTimeout to ensure DOM is ready after resize
         setTimeout(function() {
@@ -1873,6 +1933,7 @@ gantt.config.timeline = true;           // enable timeline mode
       
       // Also handle during resize to save values before they disappear
       gantt.attachEvent("onGridResizeStart", function(old_width, new_width){
+        gGanttGlobal.GanttGridResizeInProgress = true;
         console.log('Grid resize started. Saving filter values...');
         saveFilterValues();
         return true;

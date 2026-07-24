@@ -76,6 +76,33 @@ class DateFilter extends ColumnFilter {
 		this.date = ""; // To store the selected date
 		this.condition = "after"; // To store the selected condition ('before', 'after', 'equals')
 		this.popup = null;
+		this.configureColumnSorting();
+	}
+
+	configureColumnSorting() {
+		const columns = this.gantt && this.gantt.config && this.gantt.config.columns;
+		if (!Array.isArray(columns)) return;
+
+		const column = columns.find((item) => item && item.name === this.columnName);
+		if (!column) return;
+
+		const columnName = this.columnName;
+		column.sort = (taskA, taskB) => DateFilter.compareValues(
+			taskA ? taskA[columnName] : null,
+			taskB ? taskB[columnName] : null
+		);
+	}
+
+	static compareValues(valueA, valueB) {
+		const dateA = DateFilter.parseDate(valueA);
+		const dateB = DateFilter.parseDate(valueB);
+		const timeA = dateA ? dateA.getTime() : null;
+		const timeB = dateB ? dateB.getTime() : null;
+
+		if (timeA === timeB) return 0;
+		if (timeA === null) return 1;
+		if (timeB === null) return -1;
+		return timeA < timeB ? -1 : 1;
 	}
 
 	init() {

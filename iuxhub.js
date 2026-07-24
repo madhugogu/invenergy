@@ -621,6 +621,35 @@
     renderToolBar: function () {
       // Static toolbar, timeline, and configuration styles live in IUXHUB_CSS.css.
 
+      function filterLookupComboByCodeOrDescription(queryPlan) {
+        var combo = queryPlan.combo;
+        var store = combo && combo.getStore ? combo.getStore() : null;
+        if (!store) return true;
+
+        var query = String(queryPlan.query || '').toUpperCase();
+        store.clearFilter();
+        if (query) {
+          store.filterBy(function(record) {
+            var code = String(record.get('code') || '').toUpperCase();
+            var description = String(record.get('description') || '').toUpperCase();
+            return code.indexOf(query) !== -1 || description.indexOf(query) !== -1;
+          });
+        }
+        combo.expand();
+        return false;
+      }
+
+      function markToolbarFilterChanged() {
+        Ext.getCmp("reloadGanttNow").addCls('highlight-button');
+      }
+
+      function getCodeAndDescriptionComboListeners() {
+        return {
+          beforequery: filterLookupComboByCodeOrDescription,
+          change: markToolbarFilterChanged
+        };
+      }
+
       Ext.create('Ext.toolbar.Toolbar', {
         renderTo: my_gantt_toolbar,
         id: "GanttToolBar",
@@ -830,11 +859,7 @@
               '<ul class="x-list-plain"><tpl for=".">',
               '<li role="option" class="x-boundlist-item gantt_font_size" style="font-size:80%;"><b>{code}</b> - {description}</li>',
               '</tpl></ul>'),
-            listeners: {
-              change: function () {
-                Ext.getCmp("reloadGanttNow").addCls('highlight-button');
-              }
-            }
+            listeners: getCodeAndDescriptionComboListeners()
           },
           {
             xtype: 'combobox',
@@ -857,11 +882,7 @@
               '<ul class="x-list-plain"><tpl for=".">',
               '<li role="option" class="x-boundlist-item gantt_font_size" style="font-size:80%;"><b>{code}</b> - {description}</li>',
               '</tpl></ul>'),
-            listeners: {
-              change: function () {
-                Ext.getCmp("reloadGanttNow").addCls('highlight-button');
-              }
-            }
+            listeners: getCodeAndDescriptionComboListeners()
           },
           {
             xtype: 'combobox',
@@ -884,11 +905,7 @@
               '<ul class="x-list-plain"><tpl for=".">',
               '<li role="option" class="x-boundlist-item gantt_font_size" style="font-size:80%;"><b>{code}</b> - {description}</li>',
               '</tpl></ul>'),
-            listeners: {
-              change: function () {
-                Ext.getCmp("reloadGanttNow").addCls('highlight-button');
-              }
-            }
+            listeners: getCodeAndDescriptionComboListeners()
           },
           {
             xtype: 'combobox',
@@ -911,25 +928,7 @@
               '<ul class="x-list-plain"><tpl for=".">',
               '<li role="option" class="x-boundlist-item gantt_font_size" style="font-size:80%;"><b>{code}</b> - {description}</li>',
               '</tpl></ul>'),
-            listeners: {
-              beforequery: function(queryPlan) {
-                var combo = queryPlan.combo;
-                var query = String(queryPlan.query || '').toUpperCase();
-                combo.getStore().clearFilter();
-                if (query) {
-                  combo.getStore().filterBy(function(record) {
-                    var code = String(record.get('code') || '').toUpperCase();
-                    var description = String(record.get('description') || '').toUpperCase();
-                    return code.indexOf(query) !== -1 || description.indexOf(query) !== -1;
-                  });
-                }
-                combo.expand();
-                return false;
-              },
-              change: function () {
-                Ext.getCmp("reloadGanttNow").addCls('highlight-button');
-              }
-            }
+            listeners: getCodeAndDescriptionComboListeners()
           },
           {
             xtype: 'combobox',
@@ -966,11 +965,7 @@
               '<ul class="x-list-plain"><tpl for=".">',
               '<li role="option" class="x-boundlist-item gantt_font_size" style="font-size:80%;"><b>{code}</b> - {description}</li>',
               '</tpl></ul>'),
-            listeners: {
-              change: function () {
-                Ext.getCmp("reloadGanttNow").addCls('highlight-button');
-              }
-            }
+            listeners: getCodeAndDescriptionComboListeners()
           },
           {
             xtype: "textfield",
